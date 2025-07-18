@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý đơn thuốc</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+
+<body>
+  <div class="page-container d-flex flex-column min-vh-100">
+    <!-- Header -->
+    <header class="py-3 shadow-sm">
+      <div class="container d-flex justify-content-between align-items-center">
+        <h1 class="h4 mb-0">🏥 Bệnh viện ABC</h1>
+        <nav class="d-flex align-items-center">
+          <a href="index.html" class="nav-link">Trang chủ</a>
+          <a href="#" class="nav-link fw-bold text-primary">Đơn thuốc</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="container my-5 flex-fill">
+      <h2 class="text-center text-primary mb-4">Danh sách đơn thuốc</h2>
+
+      <div class="table-responsive mb-4">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Mã đơn</th>
+              <th>Bệnh nhân</th>
+              <th>Ngày tạo</th>
+              <th>Bác sĩ</th>
+              <th>Trạng thái</th>
+              <th>Hành động</th>
+              <th>Chi tiết</th>
+            </tr>
+          </thead>
+          <tbody id="prescriptionTableBody">
+            <!-- Render động -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Modal chi tiết -->
+    <div class="modal fade" id="prescriptionModal" tabindex="-1" aria-labelledby="prescriptionModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="prescriptionModalLabel">Chi tiết đơn thuốc</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+          </div>
+          <div class="modal-body">
+            <div id="prescriptionDetail">
+              <!-- Nội dung chi tiết render ở đây -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 mt-5">
+      <div class="container">
+        <p class="mb-1">© 2025 Bệnh viện ABC - Hệ thống quản lý bệnh viện</p>
+        <small>Liên hệ: 0123 456 789 | Email: support@benhvienabc.vn</small>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Script -->
+  <script>
+    const prescriptions = [
+      {
+        id: 'RX20250001',
+        patient: 'Nguyễn Văn A',
+        date: '2025-07-10',
+        doctor: 'BS. Hoa',
+        status: 'Chưa cấp',
+        diagnosis: 'Viêm họng',
+        notes: 'Uống sau ăn sáng',
+        drugs: ['Paracetamol 500mg - 10 viên', 'Vitamin C - 5 viên']
+      },
+      {
+        id: 'RX20250002',
+        patient: 'Trần Thị B',
+        date: '2025-07-11',
+        doctor: 'BS. Hùng',
+        status: 'Hủy',
+        diagnosis: 'Cảm cúm',
+        notes: '',
+        drugs: ['Decolgen - 6 viên']
+      },
+      {
+        id: 'RX20250003',
+        patient: 'Phạm Văn C',
+        date: '2025-07-12',
+        doctor: 'BS. Minh',
+        status: 'Đã cấp',
+        diagnosis: 'Ho nhẹ',
+        notes: 'Uống sáng tối',
+        drugs: ['Codein - 3 viên']
+      }
+    ];
+
+    const tableBody = document.getElementById("prescriptionTableBody");
+    const detailContainer = document.getElementById("prescriptionDetail");
+
+    function renderTable() {
+      tableBody.innerHTML = "";
+
+      prescriptions.forEach(p => {
+        const row = document.createElement("tr");
+
+        const isDispensed = p.status === "Đã cấp";
+
+        row.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.patient}</td>
+          <td>${p.date}</td>
+          <td>${p.doctor}</td>
+          <td>${p.status}</td>
+          <td>
+            <button class="btn btn-${isDispensed ? "danger" : "success"} btn-sm" onclick="toggleDispense('${p.id}')">
+              ${isDispensed ? "Hủy cấp" : "Cấp thuốc"}
+            </button>
+          </td>
+          <td>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#prescriptionModal" onclick="viewDetail('${p.id}')">Chi tiết</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function toggleDispense(id) {
+      const prescription = prescriptions.find(p => p.id === id);
+      if (!prescription) return;
+
+      if (prescription.status === "Đã cấp") {
+        prescription.status = "Hủy";
+      } else {
+        prescription.status = "Đã cấp";
+      }
+
+      renderTable();
+      // TODO: Gửi thay đổi về backend nếu cần
+    }
+
+    function viewDetail(id) {
+      const p = prescriptions.find(p => p.id === id);
+
+      detailContainer.innerHTML = `
+        <p><strong>Mã đơn:</strong> ${p.id}</p>
+        <p><strong>Bệnh nhân:</strong> ${p.patient}</p>
+        <p><strong>Ngày kê:</strong> ${p.date}</p>
+        <p><strong>Chẩn đoán:</strong> ${p.diagnosis}</p>
+        <p><strong>Danh sách thuốc:</strong></p>
+        <ul>${p.drugs.map(d => `<li>${d}</li>`).join("")}</ul>
+        <p><strong>Ghi chú:</strong> ${p.notes || "Không có"}</p>
+        <p><strong>Trạng thái hiện tại:</strong> ${p.status}</p>
+      `;
+    }
+
+    renderTable();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

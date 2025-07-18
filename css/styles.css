@@ -2,11 +2,9 @@
 :root {
     --primary-color: rgb(0, 188, 156);
     --primary-color-hover: rgb(0, 150, 136);
-    --primary-color-dark: #1e1e1e;
     --background-light: #f2fefe;
-    --background-dark: #121212;
-    --text-light: #000;
-    --text-dark: #fff;
+    --text-black: #000;
+    --text-white: #fff;
 }
 
 /* Focus viền input, textarea, select */
@@ -36,10 +34,9 @@
     box-shadow: none;
 }
 
-/* Chế độ sáng (mặc định) */
 body {
     background-color: var(--background-light);
-    color: var(--text-light);
+    color: var(--text-black);
     min-height: 100vh;
 }
 
@@ -57,36 +54,17 @@ body {
     border-color: var(--primary-color-hover) !important;
 }
 
-.theme-toggle-btn {
-    height: 40px;
-    width: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    border-radius: 25%;
-    background-color: #bbb;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    margin-left: 1rem;
-}
-
-.theme-toggle-btn:hover {
-    background-color: #888;
-}
-
 /* Header and Footer */
 header,
 footer {
+    color: var(--text-white);
     background-color: var(--primary-color);
-    color: white;
 }
 
 /* Header/Footer navigation link tùy chỉnh */
 header .nav-link,
 footer .nav-link {
-    color: white;
+    color: var(--text-white);
     text-decoration: none;
     margin-left: 1rem;
 }
@@ -94,26 +72,16 @@ footer .nav-link {
 header .nav-link:hover,
 footer .nav-link:hover {
     text-decoration: underline;
-    color: white;
+    color: var(--text-white);
 }
 
-header .nav-link.nav-link {
+/*header .nav-link.nav-link {
     color: white !important;
     padding: 0.5rem 0.75rem;
     display: inline-flex;
     align-items: center;
     height: 40px;
-}
-
-body.dark-mode header {
-    background-color: var(--primary-color-dark);
-    color: #ccc;
-}
-
-body.dark-mode footer {
-    background-color: var(--primary-color-dark);
-    color: #ccc;
-}
+}*/
 
 /* Card login */
 .card {
@@ -123,7 +91,6 @@ body.dark-mode footer {
 
 
 /*table*/
-/* ----- TABLE: Light Mode ----- */
 .table {
     background-color: var(--background-light);
 }
@@ -135,78 +102,46 @@ body.dark-mode footer {
 
 .table th,
 .table td {
-    color: var(--text-light);
+    color: var(--text-black);
     background-color: transparent;
     text-align: center;
     vertical-align: middle;
 }
 
-/* ----- TABLE: Dark Mode ----- */
-body.dark-mode .table {
-    background-color: var(--background-dark);
-}
-body.dark-mode .table thead th {
-    background-color: var(--primary-color-dark);
-    color: var(--text-dark);
+.alert-info {
+    background-color: rgba(0, 188, 156, 0.1);
+    /* trong nhẹ, dùng primary với opacity */
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
 }
 
-body.dark-mode .table th,
-body.dark-mode .table td {
-    color: var(--text-dark);
-    border-color: #444;
-    background-color: transparent;
+
+select.form-select {
+    border: 1px solid #ccc;
+    outline: none;
 }
 
-/* Chế độ tối */
-body.dark-mode {
-    background-color: var(--background-dark);
-    color: var(--text-dark);
+select.form-select:focus {
+    border-color: var(--primary-color);
+    outline: none;
 }
 
-body.dark-mode .card {
-    background-color: var(--primary-color-dark);
-    color: #fff;
+/* Placeholder disabled option */
+select.form-select option[disabled] {
+    color: #999;
 }
 
-body.dark-mode .form-control {
-    background-color: #2a2a2a;
-    color: #fff;
-    border-color: #444;
+/* Tùy chỉnh option bên trong dropdown */
+select.form-select option {
+    padding: 0.5rem 1rem;
+    border: none;
+    font-size: 15px;
+    background-color: white;
+    color: var(--text-black);
 }
 
-body.dark-mode .form-control::placeholder {
-    color: #bbb;
-}
-
-body.dark-mode a {
-    color: #80deea;
-}
-
-/* Table trong dark mode */
-
-
-/* Alert trong dark mode */
-body.dark-mode .alert {
-    background-color: #333;
-    color: #fff;
-    border-color: #444;
-}
-
-/* Tùy chỉnh thêm cho từng loại alert nếu cần */
-body.dark-mode .alert-info {
-    background-color: #2c3e50;
-    color: #ecf0f1;
-    border-color: #34495e;
-}
-
-body.dark-mode .alert-danger {
-    background-color: #c0392b;
-    color: #fff;
-    border-color: #e74c3c;
-}
-
-body.dark-mode .alert-warning {
-    background-color: #f39c12;
-    color: #000;
-    border-color: #f1c40f;
+/* Placeholder option (disabled) */
+select.form-select option[disabled] {
+    color: #999;
+    font-style: italic;
 }

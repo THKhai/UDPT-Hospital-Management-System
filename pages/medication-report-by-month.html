@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thống kê tên thuốc theo tháng</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+
+<body>
+  <div class="page-container d-flex flex-column min-vh-100">
+    <!-- Header -->
+    <header class="py-3 shadow-sm">
+      <div class="container d-flex justify-content-between align-items-center">
+        <h1 class="h4 mb-0">🏥 Bệnh viện ABC</h1>
+        <nav class="d-flex align-items-center">
+          <a href="index.html" class="nav-link">Trang chủ</a>
+          <a href="register.html" class="nav-link">Đăng ký khám</a>
+          <a href="about.html" class="nav-link">Giới thiệu</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="container my-5 flex-fill">
+      <h2 class="text-center text-primary mb-4">Thống kê tên thuốc theo tháng</h2>
+
+      <!-- Form chọn tháng -->
+      <form class="row g-3 mb-4">
+        <div class="col-md-4 offset-md-4">
+          <label for="monthSelect" class="form-label">Chọn tháng:</label>
+          <input type="month" id="monthSelect" class="form-control">
+        </div>
+        <div class="col-12 text-center">
+          <button type="submit" class="btn btn-primary">Xem thống kê</button>
+        </div>
+      </form>
+
+      <!-- Thông báo nếu không có dữ liệu -->
+      <!-- <div class="alert alert-warning text-center">Không có dữ liệu cho tháng này</div> -->
+
+      <!-- Bảng thống kê thuốc -->
+      <div class="table-responsive">
+        <table class="table table-bordered text-center align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>STT</th>
+              <th>Tên thuốc</th>
+              <th>Số lần cấp phát</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Paracetamol 500mg</td>
+              <td>125</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Amoxicillin 500mg</td>
+              <td>98</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Vitamin C 1000mg</td>
+              <td>73</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 mt-5">
+      <div class="container">
+        <p class="mb-1">© 2025 Bệnh viện ABC - Hệ thống quản lý bệnh viện</p>
+        <small>Liên hệ: 0123 456 789 | Email: support@benhvienabc.vn</small>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
