@@ -9,12 +9,15 @@ Check version:
 node -v
 npm -v
 
+Install dependencies:
 npm install
 
+Install libraries:
 # React Router DOM
 npm install react-router-dom
 
 # Tailwind CSS v4
 npm install tailwindcss @tailwindcss/vite
 
+Run Project
 npm run dev
