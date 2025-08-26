@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 
 function CreatePrescription() {
@@ -8,11 +8,15 @@ function CreatePrescription() {
   const [validFrom, setValidFrom] = useState("");
   const [validTo, setValidTo] = useState("");
   const [notes, setNotes] = useState("");
-  const [medicines, setMedicines] = useState([
+  const [medicines, setMedicines] = useState<any[]>([
     {
       medication_id: "",
-      quantity_prescribed: "",
+      medicine_name: "",
+      generic_name: "",
+      form: "",
+      strength: "",
       unit_prescribed: "",
+      quantity_prescribed: "",
       dose: "",
       frequency: "",
       duration: "",
@@ -20,19 +24,45 @@ function CreatePrescription() {
     }
   ]);
   const [successMsg, setSuccessMsg] = useState("");
+  const [medicineOptions, setMedicineOptions] = useState<any[]>([]);
 
-  const formatDateTime = (dt: string) => {
-  if (!dt) return "";
-  // dt = "2025-08-23T16:18"
-  return dt + ":00Z"; // "2025-08-23T16:18:00Z"
-};
+  // fetch medicines from API
+  useEffect(() => {
+    fetch("http://127.0.0.1:8011/medicines?page=1&page_size=50")
+      .then((res) => res.json())
+      .then((data) => {
+        setMedicineOptions(data.data || []);
+      })
+      .catch((err) => console.error(err));
+  }, []);
 
-  // Handle medicine input
-  const handleMedicineChange = (idx: number, field: string, value: string) => {
+  const formatDateTime = (dt: string) => (dt ? dt + ":00Z" : "");
+
+  const handleMedicineChange = (idx: number, field: string, value: any) => {
     const newMeds = medicines.map((m, i) =>
       i === idx ? { ...m, [field]: value } : m
     );
     setMedicines(newMeds);
+  };
+
+  const handleSelectMedicine = (idx: number, medId: string) => {
+    const selected = medicineOptions.find((m) => m.medication_id === medId);
+    if (selected) {
+      const newMeds = medicines.map((m, i) =>
+        i === idx
+          ? {
+              ...m,
+              medication_id: selected.medication_id,
+              medicine_name: selected.medicine_name,
+              generic_name: selected.generic_name,
+              form: selected.form,
+              strength: selected.strength,
+              unit_prescribed: selected.unit
+            }
+          : m
+      );
+      setMedicines(newMeds);
+    }
   };
 
   const handleAddMedicine = () => {
@@ -40,8 +70,12 @@ function CreatePrescription() {
       ...medicines,
       {
         medication_id: "",
-        quantity_prescribed: "",
+        medicine_name: "",
+        generic_name: "",
+        form: "",
+        strength: "",
         unit_prescribed: "",
+        quantity_prescribed: "",
         dose: "",
         frequency: "",
         duration: "",
@@ -54,7 +88,6 @@ function CreatePrescription() {
     setMedicines(medicines.filter((_, i) => i !== idx));
   };
 
-  // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -95,8 +128,12 @@ function CreatePrescription() {
       setMedicines([
         {
           medication_id: "",
-          quantity_prescribed: "",
+          medicine_name: "",
+          generic_name: "",
+          form: "",
+          strength: "",
           unit_prescribed: "",
+          quantity_prescribed: "",
           dose: "",
           frequency: "",
           duration: "",
@@ -122,13 +159,16 @@ function CreatePrescription() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="max-w-xl mx-auto bg-white p-6 rounded-lg shadow">
+        <form
+          onSubmit={handleSubmit}
+          className="max-w-xl mx-auto bg-white p-6 rounded-lg shadow"
+        >
           {/* Patient */}
           <div className="mb-4">
             <label className="block font-medium mb-1">Patient ID</label>
             <input
               type="text"
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
               value={patientId}
               onChange={(e) => setPatientId(e.target.value)}
               required
@@ -140,21 +180,9 @@ function CreatePrescription() {
             <label className="block font-medium mb-1">Doctor ID</label>
             <input
               type="text"
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
               value={doctorId}
               onChange={(e) => setDoctorId(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Encounter */}
-          <div className="mb-4">
-            <label className="block font-medium mb-1">Encounter ID</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
-              value={encounterId}
-              onChange={(e) => setEncounterId(e.target.value)}
               required
             />
           </div>
@@ -165,7 +193,7 @@ function CreatePrescription() {
               <label className="block font-medium mb-1">Valid From</label>
               <input
                 type="datetime-local"
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
                 value={validFrom}
                 onChange={(e) => setValidFrom(e.target.value)}
                 required
@@ -175,7 +203,7 @@ function CreatePrescription() {
               <label className="block font-medium mb-1">Valid To</label>
               <input
                 type="datetime-local"
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
                 value={validTo}
                 onChange={(e) => setValidTo(e.target.value)}
                 required
@@ -187,31 +215,73 @@ function CreatePrescription() {
           <div className="mb-4">
             <label className="block font-medium mb-1">Medicines</label>
             {medicines.map((m, idx) => (
-              <div key={idx} className="border p-3 rounded mb-2">
-                <input
-                  type="text"
-                  placeholder="Medication ID"
-                  className="w-full border rounded px-2 py-1 mb-1"
+              <div
+                key={idx}
+                className="border border-primary p-3 rounded mb-3"
+              >
+                {/* Select medicine */}
+                <select
+                  className="w-full border rounded px-2 py-1 mb-2 focus:outline-none focus:border-primary"
                   value={m.medication_id}
                   onChange={(e) =>
-                    handleMedicineChange(idx, "medication_id", e.target.value)
+                    handleSelectMedicine(idx, e.target.value)
                   }
                   required
+                >
+                  <option value="">-- Select medicine --</option>
+                  {medicineOptions.map((opt) => (
+                    <option key={opt.medication_id} value={opt.medication_id}>
+                      {opt.medicine_name} ({opt.strength})
+                    </option>
+                  ))}
+                </select>
+
+                {/* Auto filled but editable */}
+                <input
+                  type="text"
+                  placeholder="Generic Name"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  value={m.generic_name}
+                  onChange={(e) =>
+                    handleMedicineChange(idx, "generic_name", e.target.value)
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="Form"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  value={m.form}
+                  onChange={(e) =>
+                    handleMedicineChange(idx, "form", e.target.value)
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="Strength"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  value={m.strength}
+                  onChange={(e) =>
+                    handleMedicineChange(idx, "strength", e.target.value)
+                  }
                 />
                 <input
                   type="number"
                   placeholder="Quantity"
-                  className="w-full border rounded px-2 py-1 mb-1"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
                   value={m.quantity_prescribed}
                   onChange={(e) =>
-                    handleMedicineChange(idx, "quantity_prescribed", e.target.value)
+                    handleMedicineChange(
+                      idx,
+                      "quantity_prescribed",
+                      e.target.value
+                    )
                   }
                   required
                 />
                 <input
                   type="text"
                   placeholder="Unit (e.g. mg, pill)"
-                  className="w-full border rounded px-2 py-1 mb-1"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
                   value={m.unit_prescribed}
                   onChange={(e) =>
                     handleMedicineChange(idx, "unit_prescribed", e.target.value)
@@ -220,7 +290,7 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Dose"
-                  className="w-full border rounded px-2 py-1 mb-1"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
                   value={m.dose}
                   onChange={(e) =>
                     handleMedicineChange(idx, "dose", e.target.value)
@@ -229,7 +299,7 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Frequency"
-                  className="w-full border rounded px-2 py-1 mb-1"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
                   value={m.frequency}
                   onChange={(e) =>
                     handleMedicineChange(idx, "frequency", e.target.value)
@@ -238,7 +308,7 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Duration"
-                  className="w-full border rounded px-2 py-1 mb-1"
+                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
                   value={m.duration}
                   onChange={(e) =>
                     handleMedicineChange(idx, "duration", e.target.value)
@@ -247,12 +317,13 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Notes"
-                  className="w-full border rounded px-2 py-1"
+                  className="w-full border rounded px-2 py-1 focus:outline-none focus:border-primary"
                   value={m.notes}
                   onChange={(e) =>
                     handleMedicineChange(idx, "notes", e.target.value)
                   }
                 />
+
                 {medicines.length > 1 && (
                   <button
                     type="button"
@@ -277,7 +348,7 @@ function CreatePrescription() {
           <div className="mb-4">
             <label className="block font-medium mb-1">Prescription Notes</label>
             <textarea
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 type PrescriptionItem = {
   item_id: string;
   medication_id: string;
+  medication_name?: string; // Tên thuốc lấy từ API medicines
   quantity_prescribed: string;
   unit_prescribed: string;
   dose: string;
@@ -50,7 +51,7 @@ type Meta = {
 export default function PrescriptionPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
-  
+
   // Modal xem chi tiết
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selected, setSelected] = useState<Prescription | null>(null);
@@ -78,11 +79,34 @@ export default function PrescriptionPage() {
     }
   };
 
+  const medicineCache: Record<string, string> = {};
+
+  const fetchMedicineName = async (id: string): Promise<string> => {
+    if (medicineCache[id]) return medicineCache[id];
+    try {
+      const res = await fetch(`http://127.0.0.1:8011/medicines/${id}`);
+      const data = await res.json();
+      const name = data.medicine_name;
+      medicineCache[id] = name;
+      return name;
+    } catch (err) {
+      console.error("Failed to fetch medicine", err);
+      return id;
+    }
+  };
+
   const fetchPrescriptionDetail = async (id: string) => {
     setLoadingDetail(true);
     try {
       const res = await fetch(`http://127.0.0.1:8011/prescriptions/${id}`);
       const data: Prescription = await res.json();
+
+      if (data.items) {
+        for (const item of data.items) {
+          item.medication_name = await fetchMedicineName(item.medication_id);
+        }
+      }
+
       setSelected(data);
     } catch (err) {
       console.error("Failed to fetch prescription detail", err);
@@ -91,19 +115,26 @@ export default function PrescriptionPage() {
     }
   };
 
+
   const fetchPrescriptionForDispense = async (id: string) => {
     setLoadingDispense(true);
     try {
       const res = await fetch(`http://127.0.0.1:8011/prescriptions/${id}`);
       const data: Prescription = await res.json();
+
+      if (data.items) {
+        for (const item of data.items) {
+          item.medication_name = await fetchMedicineName(item.medication_id);
+        }
+      }
+
       setDispensePrescription(data);
-      
-      // Khởi tạo dispense items từ prescription items
+
       const items: DispenseItem[] = (data.items || []).map(item => ({
         prescription_item_id: item.item_id,
         quantity_dispensed: parseInt(item.quantity_prescribed) || 0,
         lot_number: "",
-        expiry_date: new Date().toISOString().split('T')[0],
+        expiry_date: new Date().toISOString().split("T")[0],
         notes: "",
         selected: true,
         prescription_item: item
@@ -115,6 +146,8 @@ export default function PrescriptionPage() {
       setLoadingDispense(false);
     }
   };
+
+
 
   useEffect(() => {
     fetchPrescriptions();
@@ -283,7 +316,7 @@ export default function PrescriptionPage() {
       });
 
       if (!dispenseRes.ok) throw new Error("Tạo phiếu cấp phát thất bại");
-      
+
       const dispenseData = await dispenseRes.json();
       const dispenseId = dispenseData.dispense_id;
 
@@ -456,20 +489,21 @@ export default function PrescriptionPage() {
                                 <input
                                   type="text"
                                   className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                  value={item.medication_id}
+                                  value={item.medication_name || ""}
                                   onChange={(e) => {
                                     if (!editedPrescription) return;
                                     const newItems = [...editedPrescription.items!];
-                                    newItems[idx].medication_id = e.target.value;
+                                    newItems[idx].medication_name = e.target.value; // cho phép nhập text
                                     setEditedPrescription({ ...editedPrescription, items: newItems });
                                   }}
+
                                   disabled={!editMode}
                                 />
                               </div>
 
                               <div className="flex gap-2">
-                                <div className="flex gap-1 items-center w-1/3">
-                                  <span className="font-semibold">Số lượng:</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="font-semibold whitespace-nowrap">Số lượng:</span>
                                   <input
                                     type="text"
                                     className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
@@ -483,8 +517,8 @@ export default function PrescriptionPage() {
                                     disabled={!editMode}
                                   />
                                 </div>
-                                <div className="flex gap-1 items-center w-1/3">
-                                  <span className="font-semibold">Đơn vị:</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="font-semibold whitespace-nowrap">Đơn vị:</span>
                                   <input
                                     type="text"
                                     className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
@@ -498,8 +532,8 @@ export default function PrescriptionPage() {
                                     disabled={!editMode}
                                   />
                                 </div>
-                                <div className="flex gap-1 items-center w-1/3">
-                                  <span className="font-semibold">Liều:</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="font-semibold whitespace-nowrap">Liều:</span>
                                   <input
                                     type="text"
                                     className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
@@ -516,8 +550,8 @@ export default function PrescriptionPage() {
                               </div>
 
                               <div className="flex gap-2">
-                                <div className="flex gap-1 items-center w-1/3">
-                                  <span className="font-semibold">Tần suất:</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="font-semibold whitespace-nowrap">Tần suất:</span>
                                   <input
                                     type="text"
                                     className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
@@ -531,8 +565,8 @@ export default function PrescriptionPage() {
                                     disabled={!editMode}
                                   />
                                 </div>
-                                <div className="flex gap-1 items-center w-1/3">
-                                  <span className="font-semibold">Thời gian:</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="font-semibold whitespace-nowrap">Thời gian:</span>
                                   <input
                                     type="text"
                                     className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
@@ -546,8 +580,8 @@ export default function PrescriptionPage() {
                                     disabled={!editMode}
                                   />
                                 </div>
-                                <div className="flex gap-1 items-center w-1/3">
-                                  <span className="font-semibold">Ghi chú:</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
                                   <input
                                     type="text"
                                     className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
@@ -727,7 +761,7 @@ export default function PrescriptionPage() {
                     {/* Danh sách thuốc để cấp phát */}
                     <hr className="my-4" />
                     <h6 className="font-semibold mb-3">Danh sách thuốc cấp phát:</h6>
-                    
+
                     {dispenseItems.length > 0 ? (
                       <div className="space-y-3">
                         {dispenseItems.map((item, idx) => (
@@ -745,7 +779,7 @@ export default function PrescriptionPage() {
                                 }}
                               />
                               <span className="font-semibold text-lg">
-                                {item.prescription_item.medication_id}
+                                {item.prescription_item.medication_name}
                               </span>
                             </div>
 
