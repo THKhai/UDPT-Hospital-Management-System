@@ -28,6 +28,16 @@ type Prescription = {
   items?: PrescriptionItem[];
 };
 
+type DispenseItem = {
+  prescription_item_id: string;
+  quantity_dispensed: number;
+  lot_number: string;
+  expiry_date: string;
+  notes: string;
+  selected: boolean;
+  prescription_item: PrescriptionItem;
+};
+
 type Meta = {
   page: number;
   page_size: number;
@@ -40,13 +50,22 @@ type Meta = {
 export default function PrescriptionPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  
+  // Modal xem chi tiết
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selected, setSelected] = useState<Prescription | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-
   const [editMode, setEditMode] = useState(false);
   const [editedPrescription, setEditedPrescription] = useState<Prescription | null>(null);
   const [deletedItems, setDeletedItems] = useState<string[]>([]);
+
+  // Modal cấp phát
+  const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
+  const [dispensePrescription, setDispensePrescription] = useState<Prescription | null>(null);
+  const [dispenseItems, setDispenseItems] = useState<DispenseItem[]>([]);
+  const [dispenseNotes, setDispenseNotes] = useState("");
+  const [dispensedBy, setDispensedBy] = useState("");
+  const [loadingDispense, setLoadingDispense] = useState(false);
 
   const fetchPrescriptions = async (page = 1, page_size = 10) => {
     try {
@@ -72,27 +91,69 @@ export default function PrescriptionPage() {
     }
   };
 
+  const fetchPrescriptionForDispense = async (id: string) => {
+    setLoadingDispense(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8011/prescriptions/${id}`);
+      const data: Prescription = await res.json();
+      setDispensePrescription(data);
+      
+      // Khởi tạo dispense items từ prescription items
+      const items: DispenseItem[] = (data.items || []).map(item => ({
+        prescription_item_id: item.item_id,
+        quantity_dispensed: parseInt(item.quantity_prescribed) || 0,
+        lot_number: "",
+        expiry_date: new Date().toISOString().split('T')[0],
+        notes: "",
+        selected: true,
+        prescription_item: item
+      }));
+      setDispenseItems(items);
+    } catch (err) {
+      console.error("Failed to fetch prescription for dispense", err);
+    } finally {
+      setLoadingDispense(false);
+    }
+  };
+
   useEffect(() => {
     fetchPrescriptions();
   }, []);
 
-  const openModal = (pres: Prescription) => {
-    setModalOpen(true);
+  // Handlers cho modal chi tiết
+  const openDetailModal = (pres: Prescription) => {
+    setDetailModalOpen(true);
     fetchPrescriptionDetail(pres.prescription_id);
     setEditMode(false);
     setEditedPrescription(null);
     setDeletedItems([]);
   };
 
-  const closeModal = () => {
+  const closeDetailModal = () => {
     if (editMode) {
       if (!confirm("Bạn có chắc chắn muốn hủy chỉnh sửa?")) return;
     }
-    setModalOpen(false);
+    setDetailModalOpen(false);
     setSelected(null);
     setEditMode(false);
     setEditedPrescription(null);
     setDeletedItems([]);
+  };
+
+  // Handlers cho modal cấp phát
+  const openDispenseModal = (pres: Prescription) => {
+    setDispenseModalOpen(true);
+    setDispenseNotes("");
+    setDispensedBy("");
+    fetchPrescriptionForDispense(pres.prescription_id);
+  };
+
+  const closeDispenseModal = () => {
+    setDispenseModalOpen(false);
+    setDispensePrescription(null);
+    setDispenseItems([]);
+    setDispenseNotes("");
+    setDispensedBy("");
   };
 
   const handleEditClick = () => {
@@ -180,7 +241,6 @@ export default function PrescriptionPage() {
     }
   };
 
-
   const handleDeletePrescription = async () => {
     if (!selected) return;
     if (!confirm("Bạn có chắc chắn muốn xoá đơn này?")) return;
@@ -190,11 +250,73 @@ export default function PrescriptionPage() {
       });
       if (!res.ok) throw new Error("Xoá thất bại");
       alert("✅ Xoá thành công");
-      closeModal();
+      closeDetailModal();
       fetchPrescriptions();
     } catch (err) {
       console.error(err);
       alert("❌ Có lỗi khi xoá đơn");
+    }
+  };
+
+  const handleDispense = async () => {
+    if (!dispensePrescription || !dispensedBy) {
+      alert("❌ Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    const selectedItems = dispenseItems.filter(item => item.selected);
+    if (selectedItems.length === 0) {
+      alert("❌ Vui lòng chọn ít nhất một thuốc để cấp phát");
+      return;
+    }
+
+    try {
+      // 1. Tạo dispense
+      const dispenseRes = await fetch("http://127.0.0.1:8011/dispenses/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prescription_id: dispensePrescription.prescription_id,
+          notes: dispenseNotes,
+          created_by: dispensedBy
+        }),
+      });
+
+      if (!dispenseRes.ok) throw new Error("Tạo phiếu cấp phát thất bại");
+      
+      const dispenseData = await dispenseRes.json();
+      const dispenseId = dispenseData.dispense_id;
+
+      // 2. Thêm các line items
+      for (const item of selectedItems) {
+        await fetch(`http://127.0.0.1:8011/dispenses/${dispenseId}/lines`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prescription_item_id: item.prescription_item_id,
+            quantity_dispensed: item.quantity_dispensed,
+            lot_number: item.lot_number,
+            expiry_date: new Date(item.expiry_date).toISOString(),
+            notes: item.notes
+          }),
+        });
+      }
+
+      // 3. Complete dispense
+      await fetch(`http://127.0.0.1:8011/dispenses/${dispenseId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dispensed_by: dispensedBy
+        }),
+      });
+
+      alert("✅ Cấp phát thành công");
+      closeDispenseModal();
+      fetchPrescriptions();
+    } catch (err) {
+      console.error(err);
+      alert("❌ Lỗi khi cấp phát thuốc");
     }
   };
 
@@ -243,13 +365,13 @@ export default function PrescriptionPage() {
                   <td className="py-2 px-4 border-b border-primary gap-2 flex justify-center">
                     <button
                       className="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition"
-                      onClick={() => openModal(p)}
+                      onClick={() => openDispenseModal(p)}
                     >
                       Cấp phát
                     </button>
                     <button
                       className="bg-primary hover:bg-primary-hover text-white px-3 py-1 rounded text-sm font-medium transition"
-                      onClick={() => openModal(p)}
+                      onClick={() => openDetailModal(p)}
                     >
                       Xem chi tiết
                     </button>
@@ -260,8 +382,8 @@ export default function PrescriptionPage() {
           </table>
         </div>
 
-        {/* Modal */}
-        {modalOpen && (
+        {/* Modal Chi tiết đơn thuốc */}
+        {detailModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl relative">
               {/* Header */}
@@ -269,7 +391,7 @@ export default function PrescriptionPage() {
                 <h5 className="text-lg font-bold">Chi tiết đơn thuốc</h5>
                 <button
                   className="text-gray-500 hover:text-red-500 text-xl font-bold"
-                  onClick={closeModal}
+                  onClick={closeDetailModal}
                   aria-label="Đóng"
                 >
                   ×
@@ -546,9 +668,194 @@ export default function PrescriptionPage() {
                 )}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Click ngoài modal */}
+        {/* Modal Cấp phát thuốc */}
+        {dispenseModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white">
+                <h5 className="text-lg font-bold">Cấp phát thuốc</h5>
+                <button
+                  className="text-gray-500 hover:text-red-500 text-xl font-bold"
+                  onClick={closeDispenseModal}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
 
+              {/* Nội dung */}
+              <div className="p-6">
+                {loadingDispense ? (
+                  <p>Đang tải thông tin...</p>
+                ) : dispensePrescription ? (
+                  <>
+                    <div className="mb-4">
+                      <p><strong>Mã đơn:</strong> {dispensePrescription.prescription_code}</p>
+                      <p><strong>Bác sĩ ID:</strong> {dispensePrescription.doctor_id}</p>
+                      <p><strong>Bệnh nhân ID:</strong> {dispensePrescription.patient_id}</p>
+                    </div>
+
+                    {/* Thông tin cấp phát */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Người cấp phát *</label>
+                        <input
+                          type="text"
+                          className="border p-2 rounded w-full"
+                          value={dispensedBy}
+                          onChange={(e) => setDispensedBy(e.target.value)}
+                          placeholder="Nhập ID người cấp phát"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Ghi chú</label>
+                        <input
+                          type="text"
+                          className="border p-2 rounded w-full"
+                          value={dispenseNotes}
+                          onChange={(e) => setDispenseNotes(e.target.value)}
+                          placeholder="Ghi chú (tùy chọn)"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Danh sách thuốc để cấp phát */}
+                    <hr className="my-4" />
+                    <h6 className="font-semibold mb-3">Danh sách thuốc cấp phát:</h6>
+                    
+                    {dispenseItems.length > 0 ? (
+                      <div className="space-y-3">
+                        {dispenseItems.map((item, idx) => (
+                          <div key={item.prescription_item_id} className="border border-gray-200 p-3 rounded">
+                            {/* Checkbox để chọn/bỏ chọn item */}
+                            <div className="flex items-center mb-2">
+                              <input
+                                type="checkbox"
+                                className="mr-2"
+                                checked={item.selected}
+                                onChange={(e) => {
+                                  const newItems = [...dispenseItems];
+                                  newItems[idx].selected = e.target.checked;
+                                  setDispenseItems(newItems);
+                                }}
+                              />
+                              <span className="font-semibold text-lg">
+                                {item.prescription_item.medication_id}
+                              </span>
+                            </div>
+
+                            {/* Thông tin thuốc gốc (chỉ đọc) */}
+                            <div className="bg-gray-50 p-2 rounded mb-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                              <div>
+                                <span className="font-medium">Liều kê:</span> {item.prescription_item.dose}
+                              </div>
+                              <div>
+                                <span className="font-medium">Tần suất:</span> {item.prescription_item.frequency}
+                              </div>
+                              <div>
+                                <span className="font-medium">Thời gian:</span> {item.prescription_item.duration}
+                              </div>
+                              <div>
+                                <span className="font-medium">SL kê:</span> {item.prescription_item.quantity_prescribed} {item.prescription_item.unit_prescribed}
+                              </div>
+                            </div>
+
+                            {/* Thông tin cấp phát (có thể chỉnh sửa khi được chọn) */}
+                            {item.selected && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Số lượng cấp phát *</label>
+                                  <input
+                                    type="number"
+                                    className="border p-2 rounded w-full"
+                                    value={item.quantity_dispensed}
+                                    onChange={(e) => {
+                                      const newItems = [...dispenseItems];
+                                      newItems[idx].quantity_dispensed = parseInt(e.target.value) || 0;
+                                      setDispenseItems(newItems);
+                                    }}
+                                    min="0"
+                                    max={parseInt(item.prescription_item.quantity_prescribed)}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Số lô *</label>
+                                  <input
+                                    type="text"
+                                    className="border p-2 rounded w-full"
+                                    value={item.lot_number}
+                                    onChange={(e) => {
+                                      const newItems = [...dispenseItems];
+                                      newItems[idx].lot_number = e.target.value;
+                                      setDispenseItems(newItems);
+                                    }}
+                                    placeholder="Nhập số lô"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Ngày hết hạn *</label>
+                                  <input
+                                    type="date"
+                                    className="border p-2 rounded w-full"
+                                    value={item.expiry_date}
+                                    onChange={(e) => {
+                                      const newItems = [...dispenseItems];
+                                      newItems[idx].expiry_date = e.target.value;
+                                      setDispenseItems(newItems);
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Ghi chú</label>
+                                  <input
+                                    type="text"
+                                    className="border p-2 rounded w-full"
+                                    value={item.notes}
+                                    onChange={(e) => {
+                                      const newItems = [...dispenseItems];
+                                      newItems[idx].notes = e.target.value;
+                                      setDispenseItems(newItems);
+                                    }}
+                                    placeholder="Ghi chú (tùy chọn)"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>Không có thuốc trong đơn này.</p>
+                    )}
+
+                  </>
+                ) : (
+                  <p>Lỗi khi tải dữ liệu</p>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 border-t px-6 py-4 sticky bottom-0 bg-white">
+                <button
+                  className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded transition"
+                  onClick={handleDispense}
+                  disabled={!dispensedBy || dispenseItems.filter(item => item.selected).length === 0}
+                >
+                  Xác nhận cấp phát
+                </button>
+                <button
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-6 py-2 rounded transition"
+                  onClick={closeDispenseModal}
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>
