@@ -400,14 +400,20 @@ export default function PrescriptionPage() {
                   <td className="py-2 px-4 border-b border-primary">{formatDate(p.valid_to)}</td>
                   <td className="py-2 px-4 border-b border-primary">
                     <span
-                      className={
-                        p.status === "Đang sử dụng"
-                          ? "inline-block px-3 py-1 rounded-full bg-yellow-500 text-white text-xs font-semibold"
-                          : "inline-block px-3 py-1 rounded-full bg-green-500 text-white text-xs font-semibold"
-                      }
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${p.status === "CREATED" || p.status === "UPDATED"
+                        ? "bg-gray-400 text-white"
+                        : p.status === "DISPENSED"
+                          ? "bg-green-500 text-white"
+                          : p.status === "PARTIAL_DISPENSE"
+                            ? "bg-yellow-500 text-black"
+                            : p.status === "CANCELED"
+                              ? "bg-red-500 text-white"
+                              : "bg-gray-200 text-black" // fallback
+                        }`}
                     >
                       {p.status}
                     </span>
+
                   </td>
                   <td className="py-2 px-4 border-b border-primary gap-2 flex justify-center">
                     <button
