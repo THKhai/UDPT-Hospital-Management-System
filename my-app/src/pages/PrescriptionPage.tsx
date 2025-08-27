@@ -274,14 +274,27 @@ export default function PrescriptionPage() {
     }
   };
 
-  const handleDeletePrescription = async () => {
+  const handleCancelPrescription = async () => {
     if (!selected) return;
     if (!confirm("Bạn có chắc chắn muốn xoá đơn này?")) return;
+
     try {
-      const res = await fetch(`http://127.0.0.1:8011/prescriptions/${selected.prescription_id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `http://127.0.0.1:8011/prescriptions/${selected.prescription_id}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            reason: "Bệnh nhân ngừng điều trị", // 👈 bạn có thể cho nhập từ input hoặc hardcode
+            canceled_by: "3fa85f64-5717-4562-b3fc-2c963f66afa6", // 👈 id bác sĩ / user hiện tại
+          }),
+        }
+      );
+
       if (!res.ok) throw new Error("Xoá thất bại");
+
       alert("✅ Xoá thành công");
       closeDetailModal();
       fetchPrescriptions();
@@ -290,6 +303,7 @@ export default function PrescriptionPage() {
       alert("❌ Có lỗi khi xoá đơn");
     }
   };
+
 
   const handleDispense = async () => {
     if (!dispensePrescription || !dispensedBy) {
@@ -598,9 +612,9 @@ export default function PrescriptionPage() {
                     </button>
                     <button
                       className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded transition"
-                      onClick={handleDeletePrescription}
+                      onClick={handleCancelPrescription}
                     >
-                      Xoá
+                      Huỷ đơn
                     </button>
                   </>
                 ) : (
