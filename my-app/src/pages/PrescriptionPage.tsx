@@ -486,114 +486,37 @@ export default function PrescriptionPage() {
                             <div className="flex flex-col gap-1 flex-1">
                               <div className="flex gap-2 items-center">
                                 <span className="w-24 font-semibold">Tên thuốc:</span>
-                                <input
-                                  type="text"
-                                  className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                  value={item.medication_name || ""}
-                                  onChange={(e) => {
-                                    if (!editedPrescription) return;
-                                    const newItems = [...editedPrescription.items!];
-                                    newItems[idx].medication_name = e.target.value; // cho phép nhập text
-                                    setEditedPrescription({ ...editedPrescription, items: newItems });
-                                  }}
-
-                                  disabled={!editMode}
-                                />
+                                <span className="p-1 rounded w-full">{item.medication_name || ""}</span>
                               </div>
 
                               <div className="flex gap-2">
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Số lượng:</span>
-                                  <input
-                                    type="text"
-                                    className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                    value={item.quantity_prescribed}
-                                    onChange={(e) => {
-                                      if (!editedPrescription) return;
-                                      const newItems = [...editedPrescription.items!];
-                                      newItems[idx].quantity_prescribed = e.target.value;
-                                      setEditedPrescription({ ...editedPrescription, items: newItems });
-                                    }}
-                                    disabled={!editMode}
-                                  />
+                                  <span className="p-1 rounded w-full">{item.quantity_prescribed}</span>
                                 </div>
+
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Đơn vị:</span>
-                                  <input
-                                    type="text"
-                                    className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                    value={item.unit_prescribed}
-                                    onChange={(e) => {
-                                      if (!editedPrescription) return;
-                                      const newItems = [...editedPrescription.items!];
-                                      newItems[idx].unit_prescribed = e.target.value;
-                                      setEditedPrescription({ ...editedPrescription, items: newItems });
-                                    }}
-                                    disabled={!editMode}
-                                  />
+                                  <span className="p-1 rounded w-full">{item.unit_prescribed}</span>
                                 </div>
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Liều:</span>
-                                  <input
-                                    type="text"
-                                    className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                    value={item.dose}
-                                    onChange={(e) => {
-                                      if (!editedPrescription) return;
-                                      const newItems = [...editedPrescription.items!];
-                                      newItems[idx].dose = e.target.value;
-                                      setEditedPrescription({ ...editedPrescription, items: newItems });
-                                    }}
-                                    disabled={!editMode}
-                                  />
+                                  <span className="p-1 rounded w-full">{item.dose}</span>
                                 </div>
                               </div>
 
                               <div className="flex gap-2">
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Tần suất:</span>
-                                  <input
-                                    type="text"
-                                    className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                    value={item.frequency}
-                                    onChange={(e) => {
-                                      if (!editedPrescription) return;
-                                      const newItems = [...editedPrescription.items!];
-                                      newItems[idx].frequency = e.target.value;
-                                      setEditedPrescription({ ...editedPrescription, items: newItems });
-                                    }}
-                                    disabled={!editMode}
-                                  />
+                                  <span className="p-1 rounded w-full">{item.frequency}</span>
                                 </div>
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Thời gian:</span>
-                                  <input
-                                    type="text"
-                                    className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                    value={item.duration}
-                                    onChange={(e) => {
-                                      if (!editedPrescription) return;
-                                      const newItems = [...editedPrescription.items!];
-                                      newItems[idx].duration = e.target.value;
-                                      setEditedPrescription({ ...editedPrescription, items: newItems });
-                                    }}
-                                    disabled={!editMode}
-                                  />
+                                  <span className="p-1 rounded w-full">{item.duration}</span>
                                 </div>
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
-                                  <input
-                                    type="text"
-                                    className={`p-1 rounded w-full ${editMode ? "border" : "border-transparent"}`}
-                                    value={item.notes}
-                                    onChange={(e) => {
-                                      if (!editedPrescription) return;
-                                      const newItems = [...editedPrescription.items!];
-                                      newItems[idx].notes = e.target.value;
-                                      setEditedPrescription({ ...editedPrescription, items: newItems });
-                                    }}
-                                    disabled={!editMode}
-                                  />
+                                  <span className="p-1 rounded w-full">{item.notes}</span>
                                 </div>
                               </div>
                             </div>
