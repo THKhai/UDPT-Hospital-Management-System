@@ -16,40 +16,44 @@ import PrescriptionPage from "../pages/PrescriptionPage";
 import RegisterPage from "../pages/RegisterPage";
 import UpdateAppointmentPage from "../pages/UpdateAppointmentPage";
 import UpdatePatientPage from "../pages/UpdatePatientPage";
+import HomePage from "../pages/HomePage";
+import {AuthProvider} from "../context/auth-context.tsx"
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<LoginPage />} />
-        
-        {/* Other routes */}
-        <Route path="/appointments" element={<AppointmentPage />} />
-        <Route path="/booking" element={<BookingPage />} />
-        <Route path="/cancel-appointment" element={<CancelAppointment />} />
-        <Route path="/confirm-appointment" element={<ConfirmAppointmentPage />} />
-        <Route path="/create-prescription" element={<CreatePrescription />} />
-        <Route path="/dispense-prescription" element={<DispensePrescriptionPage />} />
-        <Route path="/financial-report" element={<FinancialReportPage />} />
-        <Route path="/manage-user" element={<ManageUser />} />
-        <Route path="/medical-history" element={<MedicalHistoryPage />} />
-        <Route path="/medical-report" element={<MedicalReportPage />} />
-        <Route path="/patient-lookup" element={<PatientLookUpPage />} />
-        <Route path="/prescription-report" element={<PrescriptionReportPage />} />
-        <Route path="/prescriptions" element={<PrescriptionPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/update-appointment" element={<UpdateAppointmentPage />} />
-        <Route path="/update-patient" element={<UpdatePatientPage />} />
-        
-        {/* Add more routes as needed */}
-        {/* Redirect to login if not authenticated */}
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<LoginPage />} />
 
-        {/* Add more routes as needed */}
-        {/* Redirect to login if not authenticated */}
-        {/* Redirect unknown routes to home or login */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            {/* Other routes */}
+            <Route path="/appointments" element={<AppointmentPage />} />
+            <Route path="/booking" element={<BookingPage />} />
+            <Route path="/cancel-appointment" element={<CancelAppointment />} />
+            <Route path="/confirm-appointment" element={<ConfirmAppointmentPage />} />
+            <Route path="/create-prescription" element={<CreatePrescription />} />
+            <Route path="/dispense-prescription" element={<DispensePrescriptionPage />} />
+            <Route path="/financial-report" element={<FinancialReportPage />} />
+            <Route path="/manage-user" element={<ManageUser />} />
+            <Route path="/medical-history" element={<MedicalHistoryPage />} />
+            <Route path="/medical-report" element={<MedicalReportPage />} />
+            <Route path="/patient-lookup" element={<PatientLookUpPage />} />
+            <Route path="/prescription-report" element={<PrescriptionReportPage />} />
+            <Route path="/prescriptions" element={<PrescriptionPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/update-appointment" element={<UpdateAppointmentPage />} />
+            <Route path="/update-patient" element={<UpdatePatientPage />} />
+            <Route path="/Home" element={<HomePage/>}></Route>
+            {/* Add more routes as needed */}
+            {/* Redirect to login if not authenticated */}
+
+            {/* Add more routes as needed */}
+            {/* Redirect to login if not authenticated */}
+            {/* Redirect unknown routes to home or login */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
     </BrowserRouter>
   );
 }
