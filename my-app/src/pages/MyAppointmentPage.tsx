@@ -18,6 +18,12 @@ type Appointment = {
   cancellation_reason?: string;
   created_at: string;
   updated_at: string;
+  slot_id?: number;
+  confirmed_by?: number;
+  confirmed_at?: string;
+  rejected_at?: string;
+  cancelled_by?: string;
+  cancelled_at?: string;
 };
 
 type Slot = {
@@ -100,10 +106,21 @@ function MyAppointmentPage() {
     }
   }, [editMode]);
 
-  const openModal = (appt: Appointment) => {
-    setSelected(appt);
-    setModalOpen(true);
-    setEditMode(false);
+  // mở modal và fetch chi tiết
+  const openModal = async (appt: Appointment) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8005/appointments/${appt.id}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to fetch appointment detail");
+      const detail: Appointment = await res.json();
+      setSelected(detail);
+      setModalOpen(true);
+      setEditMode(false);
+    } catch (err) {
+      console.error(err);
+      alert("Không tải được chi tiết lịch khám");
+    }
   };
 
   const closeModal = () => {
@@ -153,11 +170,10 @@ function MyAppointmentPage() {
 
       if (!res.ok) throw new Error("Cập nhật lịch khám thất bại");
 
+      const updated = await res.json();
       alert("Cập nhật thành công!");
       closeModal();
 
-      // refresh
-      const updated = await res.json();
       setAppointments((prev) =>
         prev.map((a) => (a.id === selected.id ? { ...a, ...updated } : a))
       );
@@ -240,35 +256,23 @@ function MyAppointmentPage() {
                   className="text-center hover:bg-primaryHover/10 transition"
                 >
                   <td className="py-2 px-4 border-b border-primary">{a.id}</td>
-                  <td className="py-2 px-4 border-b border-primary">
-                    {a.doctor_name}
-                  </td>
-                  <td className="py-2 px-4 border-b border-primary">
-                    {a.department_name}
-                  </td>
+                  <td className="py-2 px-4 border-b border-primary">{a.doctor_name}</td>
+                  <td className="py-2 px-4 border-b border-primary">{a.department_name}</td>
                   <td className="py-2 px-4 border-b border-primary">
                     {a.appointment_date} {a.appointment_time}
                   </td>
                   <td className="py-2 px-4 border-b border-primary">
                     {a.status === "PENDING" && (
-                      <span className="text-yellow-600 font-semibold">
-                        Chờ xác nhận
-                      </span>
+                      <span className="text-yellow-600 font-semibold">Chờ xác nhận</span>
                     )}
                     {a.status === "CONFIRMED" && (
-                      <span className="text-green-600 font-semibold">
-                        Đã xác nhận
-                      </span>
+                      <span className="text-green-600 font-semibold">Đã xác nhận</span>
                     )}
                     {a.status === "REJECTED" && (
-                      <span className="text-red-600 font-semibold">
-                        Bị từ chối
-                      </span>
+                      <span className="text-red-600 font-semibold">Bị từ chối</span>
                     )}
                     {a.status === "CANCELLED" && (
-                      <span className="text-gray-600 font-semibold">
-                        Đã huỷ
-                      </span>
+                      <span className="text-gray-600 font-semibold">Đã huỷ</span>
                     )}
                   </td>
                   <td className="py-2 px-4 border-b border-primary">
@@ -330,7 +334,7 @@ function MyAppointmentPage() {
                       {selected.appointment_time}
                     </p>
                   </div>
-                  {selected.status === "PENDING" && (
+                  {(selected.status === "PENDING" || selected.status === "CONFIRMED") && (
                     <div className="md:col-span-2 text-right space-x-2">
                       <button
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"

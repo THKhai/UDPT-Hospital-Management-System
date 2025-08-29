@@ -26,64 +26,63 @@ function ConfirmAppointmentPage() {
   const [rejectionReason, setRejectionReason] = useState("");
 
   // Giả sử doctor_id được lấy từ session (hoặc context)
-  const doctorId = 1; 
+  const doctorId = 1;
 
   // Fetch danh sách lịch hẹn
-// Fetch danh sách lịch hẹn
-useEffect(() => {
-  const fetchAppointments = async () => {
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const res = await fetch(`http://127.0.0.1:8005/appointments/doctor/${doctorId}/pending`, {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) throw new Error("Failed to fetch appointments");
+        const data = await res.json();
+        setAppointments(data || []); // API trả về array, không phải {data: [...]}
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchAppointments();
+  }, [doctorId]);
+
+
+  // API confirm/reject
+  const handleAction = async (
+    appt: Appointment,
+    action: "confirm" | "reject",
+    reason?: string
+  ) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8005/appointments/doctor/${doctorId}/pending`, {
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error("Failed to fetch appointments");
-      const data = await res.json();
-      setAppointments(data || []); // API trả về array, không phải {data: [...]}
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  fetchAppointments();
-}, [doctorId]);
-
-
-// API confirm/reject
-const handleAction = async (
-  appt: Appointment,
-  action: "confirm" | "reject",
-  reason?: string
-) => {
-  try {
-    const payload =
-      action === "reject"
-        ? {
+      const payload =
+        action === "reject"
+          ? {
             action: "reject",
             rejection_reason: reason && reason.trim() !== "" ? reason : "Không có lý do cụ thể",
           }
-        : { action: "confirm" };
+          : { action: "confirm" };
 
-    const res = await fetch(
-      `http://127.0.0.1:8005/appointments/${appt.id}/confirm?confirmed_by=${doctorId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const res = await fetch(
+        `http://127.0.0.1:8005/appointments/${appt.id}/confirm?confirmed_by=${doctorId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        const errorMsg = await res.text();
+        throw new Error(errorMsg || "Failed to update appointment");
       }
-    );
 
-    if (!res.ok) {
-      const errorMsg = await res.text();
-      throw new Error(errorMsg || "Failed to update appointment");
+      // Nếu API thành công thì xóa khỏi danh sách
+      setAppointments((prev) => prev.filter((a) => a.id !== appt.id));
+      setRejectModalOpen(false);
+      setRejectionReason("");
+    } catch (err) {
+      console.error("Error updating appointment:", err);
     }
-
-    // Nếu API thành công thì xóa khỏi danh sách
-    setAppointments((prev) => prev.filter((a) => a.id !== appt.id));
-    setRejectModalOpen(false);
-    setRejectionReason("");
-  } catch (err) {
-    console.error("Error updating appointment:", err);
-  }
-};
+  };
 
 
   const openModal = (appt: Appointment) => {
