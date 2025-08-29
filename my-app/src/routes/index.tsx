@@ -18,6 +18,7 @@ import UpdateAppointmentPage from "../pages/UpdateAppointmentPage";
 import UpdatePatientPage from "../pages/UpdatePatientPage";
 import HomePage from "../pages/HomePage";
 import {AuthProvider} from "../context/auth-context.tsx"
+import MyAppointments from "../pages/MyAppointmentPage";
 
 export default function AppRoutes() {
   return (
@@ -26,7 +27,6 @@ export default function AppRoutes() {
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
-
             {/* Other routes */}
             <Route path="/appointments" element={<AppointmentPage />} />
             <Route path="/booking" element={<BookingPage />} />
@@ -44,15 +44,15 @@ export default function AppRoutes() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/update-appointment" element={<UpdateAppointmentPage />} />
             <Route path="/update-patient" element={<UpdatePatientPage />} />
-            <Route path="/Home" element={<HomePage/>}></Route>
+            <Route path="/my-appointments" element={<MyAppointments />} />
             {/* Add more routes as needed */}
             {/* Redirect to login if not authenticated */}
 
-            {/* Add more routes as needed */}
-            {/* Redirect to login if not authenticated */}
-            {/* Redirect unknown routes to home or login */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+                {/* Add more routes as needed */}
+                {/* Redirect to login if not authenticated */}
+                {/* Redirect unknown routes to home or login */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
         </AuthProvider>
     </BrowserRouter>
   );
