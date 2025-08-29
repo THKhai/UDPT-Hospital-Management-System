@@ -16,6 +16,7 @@ import PrescriptionPage from "../pages/PrescriptionPage";
 import RegisterPage from "../pages/RegisterPage";
 import UpdateAppointmentPage from "../pages/UpdateAppointmentPage";
 import UpdatePatientPage from "../pages/UpdatePatientPage";
+import MyAppointments from "../pages/MyAppointmentPage";
 
 export default function AppRoutes() {
   return (
@@ -41,6 +42,7 @@ export default function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/update-appointment" element={<UpdateAppointmentPage />} />
         <Route path="/update-patient" element={<UpdatePatientPage />} />
+        <Route path="/my-appointments" element={<MyAppointments />} />
         
         {/* Add more routes as needed */}
         {/* Redirect to login if not authenticated */}
