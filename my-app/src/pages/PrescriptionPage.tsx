@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 
 type PrescriptionItem = {
-  item_id: string;
-  medication_id: string;
+  item_id: string; // number from API, string for temp items
+  medication_id: number;
   medication_name?: string; // Tên thuốc lấy từ API medicines
   quantity_prescribed: string;
   unit_prescribed: string;
@@ -16,21 +16,50 @@ type PrescriptionItem = {
 };
 
 type Prescription = {
-  prescription_id: string;
+  prescription_id: number; // Changed to number
   prescription_code: string;
-  patient_id: string;
-  doctor_id: string;
+  appointment_id: number; // Changed to number
   status: string;
   valid_from: string;
   valid_to: string;
   notes?: string;
   created_at: string;
   updated_at: string;
+  created_by: number; // Changed to number
+  updated_by: number; // Changed to number
   items?: PrescriptionItem[];
+  // Additional fields for display
+  patient_name?: string;
+  doctor_name?: string;
+};
+
+type AppointmentDetail = {
+  id: number;
+  patient_id: number;
+  patient_name: string;
+  doctor_id: number;
+  doctor_name: string;
+  department_id: number;
+  department_name: string;
+  appointment_date: string;
+  appointment_time: string;
+  reason: string;
+  is_emergency: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  slot_id: number;
+  confirmed_by: number;
+  confirmed_at: string;
+  rejection_reason: string;
+  rejected_at: string;
+  cancelled_by: string;
+  cancelled_at: string;
+  cancellation_reason: string;
 };
 
 type DispenseItem = {
-  prescription_item_id: string;
+  prescription_item_id: number | string;
   quantity_dispensed: number;
   lot_number: string;
   expiry_date: string;
@@ -46,6 +75,18 @@ type Meta = {
   total_pages: number;
   has_next: boolean;
   has_prev: boolean;
+};
+
+type Medicine = {
+  medication_id: number;
+  medicine_name: string;
+  generic_name: string;
+  form: string;
+  strength: string;
+  unit: string;
+  stock: string;
+  is_active: boolean;
+  expiry_date: string;
 };
 
 export default function PrescriptionPage() {
@@ -68,11 +109,38 @@ export default function PrescriptionPage() {
   const [dispensedBy, setDispensedBy] = useState("");
   const [loadingDispense, setLoadingDispense] = useState(false);
 
+  // State cho danh sách thuốc
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [medicinesLoaded, setMedicinesLoaded] = useState(false);
+
   const fetchPrescriptions = async (page = 1, page_size = 10) => {
     try {
       const res = await fetch(`http://127.0.0.1:8011/prescriptions/?page=${page}&page_size=${page_size}`);
       const data = await res.json();
-      setPrescriptions(data.data);
+
+      // Fetch appointment details for each prescription to get patient and doctor names
+      const prescriptionsWithNames = await Promise.all(
+        data.data.map(async (prescription: Prescription) => {
+          try {
+            const appointmentRes = await fetch(`http://127.0.0.1:8005/appointments/${prescription.appointment_id}`);
+            const appointmentData: AppointmentDetail = await appointmentRes.json();
+            return {
+              ...prescription,
+              patient_name: appointmentData.patient_name,
+              doctor_name: appointmentData.doctor_name,
+            };
+          } catch (err) {
+            console.error(`Failed to fetch appointment ${prescription.appointment_id}`, err);
+            return {
+              ...prescription,
+              patient_name: `Patient ID: ${prescription.appointment_id}`,
+              doctor_name: `Doctor ID: ${prescription.appointment_id}`,
+            };
+          }
+        })
+      );
+
+      setPrescriptions(prescriptionsWithNames);
       setMeta(data.meta);
     } catch (err) {
       console.error("Failed to fetch prescriptions", err);
@@ -81,21 +149,58 @@ export default function PrescriptionPage() {
 
   const medicineCache: Record<string, string> = {};
 
-  const fetchMedicineName = async (id: string): Promise<string> => {
-    if (medicineCache[id]) return medicineCache[id];
+  const fetchMedicineName = async (id: number): Promise<string> => {
+    const medicineId = id.toString();
+    if (medicineCache[medicineId]) return medicineCache[medicineId];
     try {
       const res = await fetch(`http://127.0.0.1:8011/medicines/${id}`);
       const data = await res.json();
       const name = data.medicine_name;
-      medicineCache[id] = name;
+      medicineCache[medicineId] = name;
       return name;
     } catch (err) {
       console.error("Failed to fetch medicine", err);
-      return id;
+      return `Medicine ID: ${id}`;
     }
   };
 
-  const fetchPrescriptionDetail = async (id: string) => {
+  // Fetch danh sách thuốc
+  const fetchMedicines = async () => {
+    if (medicinesLoaded) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8011/medicines?page=1&page_size=100`);
+      const data = await res.json();
+      setMedicines(data.data || []);
+      setMedicinesLoaded(true);
+    } catch (err) {
+      console.error("Failed to fetch medicines", err);
+    }
+  };
+
+  // Xử lý khi chọn thuốc từ dropdown
+  const handleMedicineSelect = (itemId: string, selectedMedicine: Medicine) => {
+    if (!editedPrescription) return;
+    
+    const updatedItems = editedPrescription.items?.map(item => {
+      if (item.item_id === itemId) {
+        return {
+          ...item,
+          medication_id: selectedMedicine.medication_id,
+          medication_name: selectedMedicine.medicine_name,
+          unit_prescribed: selectedMedicine.unit, // Auto-fill unit
+          dose: selectedMedicine.strength, // Auto-fill dose from strength
+        };
+      }
+      return item;
+    });
+
+    setEditedPrescription({
+      ...editedPrescription,
+      items: updatedItems
+    });
+  };
+
+  const fetchPrescriptionDetail = async (id: number) => {
     setLoadingDetail(true);
     try {
       const res = await fetch(`http://127.0.0.1:8011/prescriptions/${id}`);
@@ -103,8 +208,20 @@ export default function PrescriptionPage() {
 
       if (data.items) {
         for (const item of data.items) {
-          item.medication_name = await fetchMedicineName(item.medication_id);
+          if (typeof item.medication_id === 'number') {
+            item.medication_name = await fetchMedicineName(item.medication_id);
+          }
         }
+      }
+
+      // Fetch appointment details to get patient and doctor names
+      try {
+        const appointmentRes = await fetch(`http://127.0.0.1:8005/appointments/${data.appointment_id}`);
+        const appointmentData: AppointmentDetail = await appointmentRes.json();
+        data.patient_name = appointmentData.patient_name;
+        data.doctor_name = appointmentData.doctor_name;
+      } catch (err) {
+        console.error(`Failed to fetch appointment ${data.appointment_id}`, err);
       }
 
       setSelected(data);
@@ -115,8 +232,7 @@ export default function PrescriptionPage() {
     }
   };
 
-
-  const fetchPrescriptionForDispense = async (id: string) => {
+  const fetchPrescriptionForDispense = async (id: number) => {
     setLoadingDispense(true);
     try {
       const res = await fetch(`http://127.0.0.1:8011/prescriptions/${id}`);
@@ -126,6 +242,16 @@ export default function PrescriptionPage() {
         for (const item of data.items) {
           item.medication_name = await fetchMedicineName(item.medication_id);
         }
+      }
+
+      // Fetch appointment details to get patient and doctor names
+      try {
+        const appointmentRes = await fetch(`http://127.0.0.1:8005/appointments/${data.appointment_id}`);
+        const appointmentData: AppointmentDetail = await appointmentRes.json();
+        data.patient_name = appointmentData.patient_name;
+        data.doctor_name = appointmentData.doctor_name;
+      } catch (err) {
+        console.error(`Failed to fetch appointment ${data.appointment_id}`, err);
       }
 
       setDispensePrescription(data);
@@ -146,8 +272,6 @@ export default function PrescriptionPage() {
       setLoadingDispense(false);
     }
   };
-
-
 
   useEffect(() => {
     fetchPrescriptions();
@@ -194,6 +318,7 @@ export default function PrescriptionPage() {
     setEditedPrescription({ ...selected });
     setDeletedItems([]);
     setEditMode(true);
+    fetchMedicines(); // Load medicines when entering edit mode
   };
 
   const handleSave = async () => {
@@ -221,10 +346,10 @@ export default function PrescriptionPage() {
 
       // 3. Xử lý items: POST mới, PATCH cũ
       for (const item of editedPrescription.items || []) {
-        if (deletedItems.includes(item.item_id)) continue;
+        if (deletedItems.includes(item.item_id.toString())) continue;
 
         // Nếu item mới tạm thời (id bắt đầu bằng 'temp-') → POST
-        if (item.item_id.startsWith("temp-")) {
+        if (item.item_id.toString().startsWith("temp-")) {
           await fetch(
             `http://127.0.0.1:8011/prescriptions/${editedPrescription.prescription_id}/items`,
             {
@@ -287,8 +412,8 @@ export default function PrescriptionPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            reason: "Bệnh nhân ngừng điều trị", // 👈 bạn có thể cho nhập từ input hoặc hardcode
-            canceled_by: "3fa85f64-5717-4562-b3fc-2c963f66afa6", // 👈 id bác sĩ / user hiện tại
+            reason: "Bệnh nhân ngừng điều trị",
+            canceled_by: 1, // Changed to number
           }),
         }
       );
@@ -303,7 +428,6 @@ export default function PrescriptionPage() {
       alert("❌ Có lỗi khi xoá đơn");
     }
   };
-
 
   const handleDispense = async () => {
     if (!dispensePrescription || !dispensedBy) {
@@ -325,7 +449,7 @@ export default function PrescriptionPage() {
         body: JSON.stringify({
           prescription_id: dispensePrescription.prescription_id,
           notes: dispenseNotes,
-          created_by: dispensedBy
+          created_by: parseInt(dispensedBy) || 1 // Convert to number
         }),
       });
 
@@ -340,7 +464,8 @@ export default function PrescriptionPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prescription_item_id: item.prescription_item_id,
+            prescription_item_id: typeof item.prescription_item_id === 'string' ?
+              parseInt(item.prescription_item_id) : item.prescription_item_id,
             quantity_dispensed: item.quantity_dispensed,
             lot_number: item.lot_number,
             expiry_date: new Date(item.expiry_date).toISOString(),
@@ -354,7 +479,7 @@ export default function PrescriptionPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dispensed_by: dispensedBy
+          dispensed_by: parseInt(dispensedBy) || 1 // Convert to number
         }),
       });
 
@@ -382,6 +507,7 @@ export default function PrescriptionPage() {
             <thead>
               <tr className="bg-primary text-white">
                 <th className="py-3 px-4 border-b-2 border-primary first:rounded-tl-lg">STT</th>
+                <th className="py-3 px-4 border-b-2 border-primary">Mã đơn</th>
                 <th className="py-3 px-4 border-b-2 border-primary">Bác sĩ</th>
                 <th className="py-3 px-4 border-b-2 border-primary">Bệnh nhân</th>
                 <th className="py-3 px-4 border-b-2 border-primary">Ngày bắt đầu</th>
@@ -394,8 +520,9 @@ export default function PrescriptionPage() {
               {prescriptions.map((p, idx) => (
                 <tr key={p.prescription_id} className="text-center hover:bg-primaryHover/10 transition">
                   <td className="py-2 px-4 border-b border-primary">{idx + 1}</td>
-                  <td className="py-2 px-4 border-b border-primary">TODO</td>
-                  <td className="py-2 px-4 border-b border-primary">TODO</td>
+                  <td className="py-2 px-4 border-b border-primary font-medium">{p.prescription_code}</td>
+                  <td className="py-2 px-4 border-b border-primary">{p.doctor_name || 'Đang tải...'}</td>
+                  <td className="py-2 px-4 border-b border-primary">{p.patient_name || 'Đang tải...'}</td>
                   <td className="py-2 px-4 border-b border-primary">{formatDate(p.valid_from)}</td>
                   <td className="py-2 px-4 border-b border-primary">{formatDate(p.valid_to)}</td>
                   <td className="py-2 px-4 border-b border-primary">
@@ -413,12 +540,12 @@ export default function PrescriptionPage() {
                     >
                       {p.status}
                     </span>
-
                   </td>
                   <td className="py-2 px-4 border-b border-primary gap-2 flex justify-center">
                     <button
                       className="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition"
                       onClick={() => openDispenseModal(p)}
+                      disabled={p.status === "CANCELED" || p.status === "DISPENSED"}
                     >
                       Cấp phát
                     </button>
@@ -434,6 +561,29 @@ export default function PrescriptionPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {meta && meta.total_pages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <button
+              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+              disabled={!meta.has_prev}
+              onClick={() => fetchPrescriptions(meta.page - 1)}
+            >
+              Trước
+            </button>
+            <span className="px-3 py-1">
+              Trang {meta.page} / {meta.total_pages}
+            </span>
+            <button
+              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+              disabled={!meta.has_next}
+              onClick={() => fetchPrescriptions(meta.page + 1)}
+            >
+              Sau
+            </button>
+          </div>
+        )}
 
         {/* Modal Chi tiết đơn thuốc */}
         {detailModalOpen && (
@@ -458,8 +608,8 @@ export default function PrescriptionPage() {
                 ) : selected ? (
                   <>
                     <p><strong>Mã đơn:</strong> {selected.prescription_code}</p>
-                    <p><strong>Bác sĩ ID:</strong> {selected.doctor_id}</p>
-                    <p><strong>Bệnh nhân ID:</strong> {selected.patient_id}</p>
+                    <p><strong>Bác sĩ:</strong> {selected.doctor_name || `ID: ${selected.appointment_id}`}</p>
+                    <p><strong>Bệnh nhân:</strong> {selected.patient_name || `ID: ${selected.appointment_id}`}</p>
 
                     {/* Ngày bắt đầu/kết thúc */}
                     <div className="flex gap-2 my-2">
@@ -499,44 +649,191 @@ export default function PrescriptionPage() {
                     {/* Danh sách thuốc */}
                     <hr className="my-3" />
                     <h6 className="font-semibold mb-2">Danh sách thuốc:</h6>
-                    {(editedPrescription?.items && editedPrescription.items.length > 0) || !editMode ? (
+                    {(editedPrescription?.items && editedPrescription.items.length >= 0) || !editMode ? (
                       <ul className="list-inside space-y-2">
                         {(editMode ? editedPrescription?.items?.filter(item => !deletedItems.includes(item.item_id)) : selected.items)?.map((item, idx) => (
-                          <li key={item.item_id} className="border border-gray-200 p-2 rounded flex justify-between items-start gap-2">
-                            <div className="flex flex-col gap-1 flex-1">
+                          <li key={item.item_id} className="border border-gray-200 p-3 rounded flex justify-between items-start gap-2">
+                            <div className="flex flex-col gap-2 flex-1">
+                              {/* Tên thuốc */}
                               <div className="flex gap-2 items-center">
                                 <span className="w-24 font-semibold">Tên thuốc:</span>
-                                <span className="p-1 rounded w-full">{item.medication_name || ""}</span>
+                                {editMode ? (
+                                  <select
+                                    className="border p-2 rounded flex-1"
+                                    value={item.medication_id || ""}
+                                    onChange={(e) => {
+                                      const medicineId = parseInt(e.target.value);
+                                      const selectedMedicine = medicines.find(m => m.medication_id === medicineId);
+                                      if (selectedMedicine && editedPrescription) {
+                                        handleMedicineSelect(item.item_id, selectedMedicine);
+                                      }
+                                    }}
+                                  >
+                                    <option value="">-- Chọn thuốc --</option>
+                                    {medicines.map(medicine => (
+                                      <option key={medicine.medication_id} value={medicine.medication_id}>
+                                        {medicine.medicine_name} ({medicine.strength} {medicine.unit})
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <span className="p-1 rounded flex-1">{item.medication_name || ""}</span>
+                                )}
                               </div>
 
+                              {/* Số lượng, Đơn vị, Liều */}
                               <div className="flex gap-2">
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Số lượng:</span>
-                                  <span className="p-1 rounded w-full">{item.quantity_prescribed}</span>
+                                  {editMode ? (
+                                    <input
+                                      type="number"
+                                      className="border p-1 rounded w-full"
+                                      value={item.quantity_prescribed}
+                                      onChange={(e) => {
+                                        if (!editedPrescription) return;
+                                        const updatedItems = editedPrescription.items?.map(i => 
+                                          i.item_id === item.item_id 
+                                            ? { ...i, quantity_prescribed: e.target.value }
+                                            : i
+                                        );
+                                        setEditedPrescription({
+                                          ...editedPrescription,
+                                          items: updatedItems
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="p-1 rounded w-full">{item.quantity_prescribed}</span>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Đơn vị:</span>
-                                  <span className="p-1 rounded w-full">{item.unit_prescribed}</span>
+                                  {editMode ? (
+                                    <input
+                                      type="text"
+                                      className="border p-1 rounded w-full"
+                                      value={item.unit_prescribed}
+                                      onChange={(e) => {
+                                        if (!editedPrescription) return;
+                                        const updatedItems = editedPrescription.items?.map(i => 
+                                          i.item_id === item.item_id 
+                                            ? { ...i, unit_prescribed: e.target.value }
+                                            : i
+                                        );
+                                        setEditedPrescription({
+                                          ...editedPrescription,
+                                          items: updatedItems
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="p-1 rounded w-full">{item.unit_prescribed}</span>
+                                  )}
                                 </div>
+
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Liều:</span>
-                                  <span className="p-1 rounded w-full">{item.dose}</span>
+                                  {editMode ? (
+                                    <input
+                                      type="text"
+                                      className="border p-1 rounded w-full"
+                                      value={item.dose}
+                                      onChange={(e) => {
+                                        if (!editedPrescription) return;
+                                        const updatedItems = editedPrescription.items?.map(i => 
+                                          i.item_id === item.item_id 
+                                            ? { ...i, dose: e.target.value }
+                                            : i
+                                        );
+                                        setEditedPrescription({
+                                          ...editedPrescription,
+                                          items: updatedItems
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="p-1 rounded w-full">{item.dose}</span>
+                                  )}
                                 </div>
                               </div>
 
+                              {/* Tần suất, Thời gian, Ghi chú */}
                               <div className="flex gap-2">
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Tần suất:</span>
-                                  <span className="p-1 rounded w-full">{item.frequency}</span>
+                                  {editMode ? (
+                                    <input
+                                      type="text"
+                                      className="border p-1 rounded w-full"
+                                      value={item.frequency}
+                                      onChange={(e) => {
+                                        if (!editedPrescription) return;
+                                        const updatedItems = editedPrescription.items?.map(i => 
+                                          i.item_id === item.item_id 
+                                            ? { ...i, frequency: e.target.value }
+                                            : i
+                                        );
+                                        setEditedPrescription({
+                                          ...editedPrescription,
+                                          items: updatedItems
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="p-1 rounded w-full">{item.frequency}</span>
+                                  )}
                                 </div>
+
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Thời gian:</span>
-                                  <span className="p-1 rounded w-full">{item.duration}</span>
+                                  {editMode ? (
+                                    <input
+                                      type="text"
+                                      className="border p-1 rounded w-full"
+                                      value={item.duration}
+                                      onChange={(e) => {
+                                        if (!editedPrescription) return;
+                                        const updatedItems = editedPrescription.items?.map(i => 
+                                          i.item_id === item.item_id 
+                                            ? { ...i, duration: e.target.value }
+                                            : i
+                                        );
+                                        setEditedPrescription({
+                                          ...editedPrescription,
+                                          items: updatedItems
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="p-1 rounded w-full">{item.duration}</span>
+                                  )}
                                 </div>
+
                                 <div className="flex items-center gap-1 flex-1">
                                   <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
-                                  <span className="p-1 rounded w-full">{item.notes}</span>
+                                  {editMode ? (
+                                    <input
+                                      type="text"
+                                      className="border p-1 rounded w-full"
+                                      value={item.notes}
+                                      onChange={(e) => {
+                                        if (!editedPrescription) return;
+                                        const updatedItems = editedPrescription.items?.map(i => 
+                                          i.item_id === item.item_id 
+                                            ? { ...i, notes: e.target.value }
+                                            : i
+                                        );
+                                        setEditedPrescription({
+                                          ...editedPrescription,
+                                          items: updatedItems
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="p-1 rounded w-full">{item.notes}</span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -544,7 +841,7 @@ export default function PrescriptionPage() {
                             {/* Xoá item */}
                             {editMode && (
                               <button
-                                className="text-red-500 font-bold text-xl self-start"
+                                className="text-red-500 hover:bg-red-50 font-bold text-xl self-start w-8 h-8 rounded-full flex items-center justify-center"
                                 onClick={() => {
                                   if (!editedPrescription) return;
                                   const itemId = item.item_id;
@@ -558,11 +855,11 @@ export default function PrescriptionPage() {
                                     items: editedPrescription.items?.filter(i => i.item_id !== itemId)
                                   });
                                 }}
+                                title="Xóa thuốc"
                               >
                                 ×
                               </button>
                             )}
-
                           </li>
                         ))}
 
@@ -570,12 +867,13 @@ export default function PrescriptionPage() {
                         {editMode && (
                           <li>
                             <button
-                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm font-medium"
+                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium flex items-center gap-2"
                               onClick={() => {
                                 if (!editedPrescription) return;
                                 const newItem: PrescriptionItem = {
                                   item_id: `temp-${Date.now()}`, // id tạm
-                                  medication_id: "",
+                                  medication_id: 0,
+                                  medication_name: "",
                                   quantity_prescribed: "",
                                   unit_prescribed: "",
                                   dose: "",
@@ -599,7 +897,6 @@ export default function PrescriptionPage() {
                     ) : (
                       <p>Chưa có thuốc.</p>
                     )}
-
                   </>
                 ) : (
                   <p>Lỗi khi tải dữ liệu</p>
@@ -672,8 +969,8 @@ export default function PrescriptionPage() {
                   <>
                     <div className="mb-4">
                       <p><strong>Mã đơn:</strong> {dispensePrescription.prescription_code}</p>
-                      <p><strong>Bác sĩ ID:</strong> {dispensePrescription.doctor_id}</p>
-                      <p><strong>Bệnh nhân ID:</strong> {dispensePrescription.patient_id}</p>
+                      <p><strong>Bác sĩ:</strong> {dispensePrescription.doctor_name || `ID: ${dispensePrescription.appointment_id}`}</p>
+                      <p><strong>Bệnh nhân:</strong> {dispensePrescription.patient_name || `ID: ${dispensePrescription.appointment_id}`}</p>
                     </div>
 
                     {/* Thông tin cấp phát */}
@@ -809,7 +1106,6 @@ export default function PrescriptionPage() {
                     ) : (
                       <p>Không có thuốc trong đơn này.</p>
                     )}
-
                   </>
                 ) : (
                   <p>Lỗi khi tải dữ liệu</p>
