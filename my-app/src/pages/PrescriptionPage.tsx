@@ -434,13 +434,13 @@ export default function PrescriptionPage() {
       alert("❌ Vui lòng điền đầy đủ thông tin");
       return;
     }
-
+  
     const selectedItems = dispenseItems.filter(item => item.selected);
     if (selectedItems.length === 0) {
       alert("❌ Vui lòng chọn ít nhất một thuốc để cấp phát");
       return;
     }
-
+  
     try {
       // 1. Tạo dispense
       const dispenseRes = await fetch("http://127.0.0.1:8011/dispenses/", {
@@ -452,12 +452,12 @@ export default function PrescriptionPage() {
           created_by: parseInt(dispensedBy) || 1 // Convert to number
         }),
       });
-
+  
       if (!dispenseRes.ok) throw new Error("Tạo phiếu cấp phát thất bại");
-
+  
       const dispenseData = await dispenseRes.json();
       const dispenseId = dispenseData.dispense_id;
-
+  
       // 2. Thêm các line items
       for (const item of selectedItems) {
         await fetch(`http://127.0.0.1:8011/dispenses/${dispenseId}/lines`, {
@@ -473,7 +473,7 @@ export default function PrescriptionPage() {
           }),
         });
       }
-
+  
       // 3. Complete dispense
       await fetch(`http://127.0.0.1:8011/dispenses/${dispenseId}/complete`, {
         method: "POST",
@@ -482,7 +482,18 @@ export default function PrescriptionPage() {
           dispensed_by: parseInt(dispensedBy) || 1 // Convert to number
         }),
       });
-
+  
+      // 4. Gửi email thông báo cho bệnh nhân (tạm hardcode email)
+      await fetch("http://127.0.0.1:8022/notifications/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "chikhangbui@gmail.com", // sau này thay bằng email bệnh nhân
+          subject: "Đơn thuốc đã được cấp phát",
+          text: `Đơn thuốc mã ${dispensePrescription.prescription_code} đã được cấp phát thành công.`,
+        }),
+      });
+  
       alert("✅ Cấp phát thành công");
       closeDispenseModal();
       fetchPrescriptions();

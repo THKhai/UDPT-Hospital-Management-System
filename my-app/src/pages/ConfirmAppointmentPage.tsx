@@ -60,7 +60,7 @@ function ConfirmAppointmentPage() {
             rejection_reason: reason && reason.trim() !== "" ? reason : "Không có lý do cụ thể",
           }
           : { action: "confirm" };
-
+  
       const res = await fetch(
         `http://127.0.0.1:8005/appointments/${appt.id}/confirm?confirmed_by=${doctorId}`,
         {
@@ -69,12 +69,26 @@ function ConfirmAppointmentPage() {
           body: JSON.stringify(payload),
         }
       );
-
+  
       if (!res.ok) {
         const errorMsg = await res.text();
         throw new Error(errorMsg || "Failed to update appointment");
       }
-
+  
+      // Gửi email thông báo cho bệnh nhân (tạm hardcode email)
+      await fetch("http://127.0.0.1:8022/notifications/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "chikhangbui@gmail.com", // sau này thay bằng appt.patient_email
+          subject: action === "confirm" ? "Lịch khám đã được xác nhận" : "Lịch khám bị từ chối",
+          text:
+            action === "confirm"
+              ? `Lịch khám của bạn vào ${appt.appointment_date} ${appt.appointment_time} đã được xác nhận.`
+              : `Lịch khám của bạn vào ${appt.appointment_date} ${appt.appointment_time} đã bị từ chối. Lý do: ${reason && reason.trim() !== "" ? reason : "Không có lý do cụ thể"}`,
+        }),
+      });
+  
       // Nếu API thành công thì xóa khỏi danh sách
       setAppointments((prev) => prev.filter((a) => a.id !== appt.id));
       setRejectModalOpen(false);
@@ -83,6 +97,7 @@ function ConfirmAppointmentPage() {
       console.error("Error updating appointment:", err);
     }
   };
+  // ...existing code...
 
 
   const openModal = (appt: Appointment) => {
