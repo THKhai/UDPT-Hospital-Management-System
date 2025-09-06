@@ -2,12 +2,11 @@ import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 
 function CreatePrescription() {
-  const [patientId, setPatientId] = useState("");
-  const [doctorId, setDoctorId] = useState("");
-  const [encounterId, setEncounterId] = useState("");
+  const [appointmentId, setAppointmentId] = useState("");
   const [validFrom, setValidFrom] = useState("");
   const [validTo, setValidTo] = useState("");
   const [notes, setNotes] = useState("");
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [medicines, setMedicines] = useState<any[]>([
     {
       medication_id: "",
@@ -20,19 +19,27 @@ function CreatePrescription() {
       dose: "",
       frequency: "",
       duration: "",
-      notes: ""
+      notes: "",
+      stock: "",
+      expiry_date: ""
     }
   ]);
   const [successMsg, setSuccessMsg] = useState("");
   const [medicineOptions, setMedicineOptions] = useState<any[]>([]);
 
-  // fetch medicines from API
+  // fetch medicines
   useEffect(() => {
     fetch("http://127.0.0.1:8011/medicines?page=1&page_size=50")
       .then((res) => res.json())
-      .then((data) => {
-        setMedicineOptions(data.data || []);
-      })
+      .then((data) => setMedicineOptions(data.data || []))
+      .catch((err) => console.error(err));
+  }, []);
+
+  // fetch appointments
+  useEffect(() => {
+    fetch("http://127.0.0.1:8005/appointments?page=1&page_size=50&status=CONFIRMED")
+      .then((res) => res.json())
+      .then((data) => setAppointments(data.data || []))
       .catch((err) => console.error(err));
   }, []);
 
@@ -46,18 +53,22 @@ function CreatePrescription() {
   };
 
   const handleSelectMedicine = (idx: number, medId: string) => {
-    const selected = medicineOptions.find((m) => m.medication_id === medId);
+    const selected = medicineOptions.find(
+      (m) => String(m.medication_id) === medId
+    );
     if (selected) {
       const newMeds = medicines.map((m, i) =>
         i === idx
           ? {
               ...m,
-              medication_id: selected.medication_id,
+              medication_id: String(selected.medication_id),
               medicine_name: selected.medicine_name,
               generic_name: selected.generic_name,
               form: selected.form,
               strength: selected.strength,
-              unit_prescribed: selected.unit
+              unit_prescribed: selected.unit,
+              stock: selected.stock,
+              expiry_date: selected.expiry_date
             }
           : m
       );
@@ -79,7 +90,9 @@ function CreatePrescription() {
         dose: "",
         frequency: "",
         duration: "",
-        notes: ""
+        notes: "",
+        stock: "",
+        expiry_date: ""
       }
     ]);
   };
@@ -92,14 +105,13 @@ function CreatePrescription() {
     e.preventDefault();
 
     const payload = {
-      patient_id: patientId,
-      doctor_id: doctorId,
-      encounter_id: encounterId,
+      appointment_id: Number(appointmentId),
       valid_from: formatDateTime(validFrom),
       valid_to: formatDateTime(validTo),
       notes,
+      created_by: 1, // tạm fix cứng
       items: medicines.map((m) => ({
-        medication_id: m.medication_id,
+        medication_id: Number(m.medication_id),
         quantity_prescribed: Number(m.quantity_prescribed),
         unit_prescribed: m.unit_prescribed,
         dose: m.dose,
@@ -119,9 +131,7 @@ function CreatePrescription() {
       if (!res.ok) throw new Error("Failed to save");
 
       setSuccessMsg("✅ Đơn thuốc đã lưu thành công!");
-      setPatientId("");
-      setDoctorId("");
-      setEncounterId("");
+      setAppointmentId("");
       setValidFrom("");
       setValidTo("");
       setNotes("");
@@ -137,7 +147,9 @@ function CreatePrescription() {
           dose: "",
           frequency: "",
           duration: "",
-          notes: ""
+          notes: "",
+          stock: "",
+          expiry_date: ""
         }
       ]);
     } catch (err) {
@@ -163,28 +175,22 @@ function CreatePrescription() {
           onSubmit={handleSubmit}
           className="max-w-xl mx-auto bg-white p-6 rounded-lg shadow"
         >
-          {/* Patient */}
+          {/* Appointment Select */}
           <div className="mb-4">
-            <label className="block font-medium mb-1">Patient ID</label>
-            <input
-              type="text"
+            <label className="block font-medium mb-1">Chọn Appointment</label>
+            <select
               className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
+              value={appointmentId}
+              onChange={(e) => setAppointmentId(e.target.value)}
               required
-            />
-          </div>
-
-          {/* Doctor */}
-          <div className="mb-4">
-            <label className="block font-medium mb-1">Doctor ID</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
-              value={doctorId}
-              onChange={(e) => setDoctorId(e.target.value)}
-              required
-            />
+            >
+              <option value="">-- Chọn appointment --</option>
+              {appointments.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.patient_name} - {a.doctor_name} ({a.appointment_date})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Dates */}
@@ -215,73 +221,38 @@ function CreatePrescription() {
           <div className="mb-4">
             <label className="block font-medium mb-1">Medicines</label>
             {medicines.map((m, idx) => (
-              <div
-                key={idx}
-                className="border border-primary p-3 rounded mb-3"
-              >
-                {/* Select medicine */}
+              <div key={idx} className="border border-primary p-3 rounded mb-3">
                 <select
                   className="w-full border rounded px-2 py-1 mb-2 focus:outline-none focus:border-primary"
                   value={m.medication_id}
-                  onChange={(e) =>
-                    handleSelectMedicine(idx, e.target.value)
-                  }
+                  onChange={(e) => handleSelectMedicine(idx, e.target.value)}
                   required
                 >
                   <option value="">-- Select medicine --</option>
                   {medicineOptions.map((opt) => (
-                    <option key={opt.medication_id} value={opt.medication_id}>
-                      {opt.medicine_name} ({opt.strength})
+                    <option
+                      key={opt.medication_id}
+                      value={String(opt.medication_id)}
+                    >
+                      {opt.medicine_name} ({opt.strength}) | Stock: {opt.stock}
                     </option>
                   ))}
                 </select>
 
-                {/* Auto filled but editable */}
-                <input
-                  type="text"
-                  placeholder="Generic Name"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
-                  value={m.generic_name}
-                  onChange={(e) =>
-                    handleMedicineChange(idx, "generic_name", e.target.value)
-                  }
-                />
-                <input
-                  type="text"
-                  placeholder="Form"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
-                  value={m.form}
-                  onChange={(e) =>
-                    handleMedicineChange(idx, "form", e.target.value)
-                  }
-                />
-                <input
-                  type="text"
-                  placeholder="Strength"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
-                  value={m.strength}
-                  onChange={(e) =>
-                    handleMedicineChange(idx, "strength", e.target.value)
-                  }
-                />
                 <input
                   type="number"
                   placeholder="Quantity"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  className="w-full border rounded px-2 py-1 mb-1"
                   value={m.quantity_prescribed}
                   onChange={(e) =>
-                    handleMedicineChange(
-                      idx,
-                      "quantity_prescribed",
-                      e.target.value
-                    )
+                    handleMedicineChange(idx, "quantity_prescribed", e.target.value)
                   }
                   required
                 />
                 <input
                   type="text"
-                  placeholder="Unit (e.g. mg, pill)"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  placeholder="Unit"
+                  className="w-full border rounded px-2 py-1 mb-1"
                   value={m.unit_prescribed}
                   onChange={(e) =>
                     handleMedicineChange(idx, "unit_prescribed", e.target.value)
@@ -290,7 +261,7 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Dose"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  className="w-full border rounded px-2 py-1 mb-1"
                   value={m.dose}
                   onChange={(e) =>
                     handleMedicineChange(idx, "dose", e.target.value)
@@ -299,7 +270,7 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Frequency"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  className="w-full border rounded px-2 py-1 mb-1"
                   value={m.frequency}
                   onChange={(e) =>
                     handleMedicineChange(idx, "frequency", e.target.value)
@@ -308,16 +279,23 @@ function CreatePrescription() {
                 <input
                   type="text"
                   placeholder="Duration"
-                  className="w-full border rounded px-2 py-1 mb-1 focus:outline-none focus:border-primary"
+                  className="w-full border rounded px-2 py-1 mb-1"
                   value={m.duration}
                   onChange={(e) =>
                     handleMedicineChange(idx, "duration", e.target.value)
                   }
                 />
+
+                {m.stock && (
+                  <p className="text-sm text-gray-500">
+                    Stock: {m.stock} | Expiry: {m.expiry_date?.slice(0, 10)}
+                  </p>
+                )}
+
                 <input
                   type="text"
                   placeholder="Notes"
-                  className="w-full border rounded px-2 py-1 focus:outline-none focus:border-primary"
+                  className="w-full border rounded px-2 py-1"
                   value={m.notes}
                   onChange={(e) =>
                     handleMedicineChange(idx, "notes", e.target.value)
@@ -348,7 +326,7 @@ function CreatePrescription() {
           <div className="mb-4">
             <label className="block font-medium mb-1">Prescription Notes</label>
             <textarea
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:border-primary"
+              className="w-full border rounded px-3 py-2"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

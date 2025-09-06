@@ -202,8 +202,20 @@ function MyAppointmentPage() {
         }
       );
       if (!res.ok) throw new Error("Huỷ lịch thất bại");
+  
+      // Gửi email thông báo cho bệnh nhân (tạm hardcode email)
+      await fetch("http://127.0.0.1:8022/notifications/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "chikhangbui@gmail.com", // sau này thay bằng email bệnh nhân
+          subject: "Lịch khám đã được huỷ",
+          text: `Lịch khám của bạn vào ${selected.appointment_date} ${selected.appointment_time} đã được huỷ. Lý do: ${cancelReason.trim()}`,
+        }),
+      });
+  
       alert("Đã huỷ lịch thành công!");
-
+  
       setAppointments((prev) =>
         prev.map((a) =>
           a.id === selected.id
