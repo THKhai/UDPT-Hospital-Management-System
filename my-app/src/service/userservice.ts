@@ -4,11 +4,10 @@ import { authService } from './authservice.ts';
 // ===== BƯỚC 2.1: INTERFACE USER =====
 export interface User {
     id: number;
-    username: string;
+    name: string;
+    phone: string;
+    user_id: number;
     email: string;
-    role: string;
-    created_at?: string;
-    updated_at?: string;
 }
 
 // ===== BƯỚC 2.2: USER SERVICE CLASS =====
@@ -28,8 +27,7 @@ class UserService {
                 throw new Error('Không có token');
             }
 
-            // Gọi API (giả sử endpoint là /users/{username})
-            const response = await fetch(`${this.API_URL}/users/by-username/${username}`, {
+            const response = await fetch(`${this.API_URL}/patients/patient_profile?username=${username}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

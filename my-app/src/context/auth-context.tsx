@@ -5,14 +5,17 @@ import { authService } from '../service/authservice.ts';
 import { userService } from '../service/userservice.ts';
 import type { LoginRequest } from '../types/auth.ts';
 import type { User } from '../service/userservice.ts';
-
 // ===== BƯỚC 3.1: INTERFACE CONTEXT =====
 interface AuthContextType {
     // State
     user: User | null;
+    setUser: React.Dispatch<React.SetStateAction<User | null>>;
     isAuthenticated: boolean;
     isLoading: boolean;
     remainingTime: number; // Thời gian còn lại (giây)
+    role: string | null;
+    setRole: React.Dispatch<React.SetStateAction<string | null>>;
+    username: string;
 
     // Actions
     login: (credentials: LoginRequest) => Promise<boolean>;
@@ -31,7 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [remainingTime, setRemainingTime] = useState(0);
-
+    const [role,setRole] = useState<string | null>(null);
+    const [username, setUsername] = useState<string>('');
     /**
      * BƯỚC 3.4: Hàm đăng nhập
      */
@@ -46,23 +50,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 alert(result.error || 'Đăng nhập thất bại');
                 return false;
             }
-
+            setRole(result.role?.toString() || 'unknow');
+            setUsername(result.username || '');
             // BƯỚC 3.5: Sau khi login thành công, lấy thông tin user
             console.log('🔄 Đang lấy thông tin user...');
             const userData = await userService.getCurrentUser();
 
             if (userData) {
-                setUser(userData);
+                setUser(userData[0]);
                 setIsAuthenticated(true);
                 console.log('✅ Đã lấy được thông tin user:', userData);
 
                 // Chuyển đến dashboard
-                navigate('/dashboard');
+                navigate('/home-page', { replace: true });
                 return true;
             } else {
                 throw new Error('Không lấy được thông tin user');
             }
-
         } catch (error: any) {
             console.error('❌ Lỗi đăng nhập:', error);
             setIsAuthenticated(false);
@@ -107,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (userData) {
                     setUser(userData);
                     setIsAuthenticated(true);
-                    console.log('✅ Đã đăng nhập với user:', userData.username);
+                    console.log('✅ Đã đăng nhập với user:', userData.name);
                 }
             } else {
                 console.log('❌ Token đã hết hạn hoặc không tồn tại');
@@ -161,11 +165,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ===== BƯỚC 3.10: CONTEXT VALUE =====
     const contextValue: AuthContextType = {
         user,
+        setUser,
         isAuthenticated,
         isLoading,
         remainingTime,
         login,
-        logout
+        logout,
+        role,
+        setRole,
+        username
     };
 
     return (

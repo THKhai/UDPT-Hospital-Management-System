@@ -1,12 +1,8 @@
 import type {JWTPayload, LoginResponse, LoginRequest, RegisterRequest} from '../types/auth.ts';
+
 class AuthService {
     // API config
     private readonly API_URL = 'http://localhost:8000';
-
-    /**
-     * BƯỚC 1.1: Decode JWT Token
-     * Chuyển token thành object để đọc thông tin
-     */
     decodeToken(token: string): JWTPayload | null {
         try {
             // JWT có 3 phần: header.payload.signature
@@ -24,8 +20,6 @@ class AuthService {
 
             // Parse JSON
             const data = JSON.parse(decoded);
-
-            console.log('✅ Decoded token:', data);
             return data;
         } catch (error) {
             console.error('❌ Lỗi decode token:', error);
@@ -33,10 +27,7 @@ class AuthService {
         }
     }
 
-    /**
-     * BƯỚC 1.2: Login và lưu token
-     */
-    async login(credentials: LoginRequest): Promise<{ success: boolean; username?: string; error?: string }> {
+    async login(credentials: LoginRequest): Promise<{ success: boolean; username?: string; role?:string,error?: string }> {
         try {
             console.log('🔐 Đang đăng nhập với username:', credentials.username);
 
@@ -83,7 +74,8 @@ class AuthService {
 
             return {
                 success: true,
-                username: username
+                username: username,
+                role:payload.role
             };
 
         } catch (error: any) {
@@ -117,23 +109,13 @@ class AuthService {
         }
     }
 
-    /**
-     * BƯỚC 1.5: Lấy token từ localStorage
-     */
     getToken(): string | null {
         return localStorage.getItem('access_token');
     }
 
-    /**
-     * BƯỚC 1.6: Lấy username đã lưu
-     */
     getStoredUsername(): string | null {
         return localStorage.getItem('username');
     }
-
-    /**
-     * BƯỚC 1.7: Kiểm tra token còn hạn không
-     */
     isTokenExpired(): boolean {
         const token = this.getToken();
         if (!token) return true;
@@ -146,9 +128,6 @@ class AuthService {
         return payload.exp <= currentTime;
     }
 
-    /**
-     * BƯỚC 1.8: Lấy thời gian còn lại của token (giây)
-     */
     getTokenRemainingTime(): number {
         const token = this.getToken();
         if (!token) return 0;
@@ -162,9 +141,6 @@ class AuthService {
         return remaining > 0 ? remaining : 0;
     }
 
-    /**
-     * BƯỚC 1.9: Xóa token và thông tin user
-     */
     logout(): void {
         console.log('🚪 Đăng xuất...');
         localStorage.removeItem('access_token');

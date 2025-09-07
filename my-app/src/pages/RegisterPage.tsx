@@ -1,20 +1,21 @@
 import React, { useState } from "react";
 import Layout from "../components/Layout";
 import {authService} from "../service/authservice.ts";
-import { useNavigate } from "react-router-dom"; // thêm dòng này
+import { useNavigate } from "react-router-dom";
 
 type UserRole = "admin" | "doctor" | "patient" | "employee";
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export default function RegisterPage() {
-    const navigate = useNavigate(); // và thêm dòng này
+    const navigate = useNavigate();
     const [form, setForm] = useState({
         username: "",
         password: "",
         name: "",
         email: "",
-        role: "patient" as UserRole, // backend default là employee
+        phone: "", // Thêm trường phone
+        role: "patient" as UserRole,
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string>("");
@@ -37,6 +38,12 @@ export default function RegisterPage() {
             return;
         }
 
+        // Validate phone number format (optional but if provided should be valid)
+        if (form.phone && !/^[0-9+\-\s()]{10,15}$/.test(form.phone.trim())) {
+            setError("Số điện thoại không hợp lệ. Vui lòng nhập 10-15 chữ số.");
+            return;
+        }
+
         setIsLoading(true);
         try {
             // Chuẩn bị credentials đúng theo DTO
@@ -45,7 +52,8 @@ export default function RegisterPage() {
                 password: form.password,
                 name: form.name.trim(),
                 email: form.email.trim(),
-                role: form.role, // có thể để "employee" mặc định
+                phone: form.phone.trim(), // Thêm phone vào credentials
+                role: form.role,
             };
 
             // Gọi register (trả về { success, username? })
@@ -66,7 +74,7 @@ export default function RegisterPage() {
 
             if (loginRes.success) {
                 // Điều hướng sang trang chính
-                navigate("/Home", { replace: true });
+                navigate("/home-page", { replace: true });
                 return;
             }
 
@@ -78,7 +86,6 @@ export default function RegisterPage() {
             setIsLoading(false);
         }
     }
-
 
     return (
         <Layout>
@@ -169,6 +176,21 @@ export default function RegisterPage() {
                         </div>
 
                         <div>
+                            <label htmlFor="phone" className="block font-medium mb-1 text-primary">
+                                Số điện thoại (tùy chọn)
+                            </label>
+                            <input
+                                id="phone"
+                                name="phone"
+                                type="tel"
+                                className="w-full border border-primary rounded px-3 py-2"
+                                placeholder="Nhập số điện thoại (VD: 0901234567)"
+                                value={form.phone}
+                                onChange={handleChange}
+                                disabled={isLoading}
+                            />
+                        </div>
+                        <div>
                             <label htmlFor="role" className="block font-medium mb-1 text-primary">
                                 Vai trò (tùy chọn)
                             </label>
@@ -180,7 +202,7 @@ export default function RegisterPage() {
                                 onChange={handleChange}
                                 disabled={isLoading}
                             >
-                                <option value="patient">Patient (mặc định)</option>
+                                <option value="patient">Patient (mặc định)</option>
                                 <option value="doctor">Doctor</option>
                             </select>
                             <p className="text-xs text-gray-500 mt-1">

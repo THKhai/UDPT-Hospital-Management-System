@@ -16,10 +16,9 @@ import PrescriptionPage from "../pages/PrescriptionPage";
 import RegisterPage from "../pages/RegisterPage";
 import UpdateAppointmentPage from "../pages/UpdateAppointmentPage";
 import UpdatePatientPage from "../pages/UpdatePatientPage";
-import HomePage from "../pages/HomePage";
 import {AuthProvider} from "../context/auth-context.tsx"
 import MyAppointments from "../pages/MyAppointmentPage";
-
+import {HomePage} from "../pages/HomePage.tsx";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -45,6 +44,7 @@ export default function AppRoutes() {
             <Route path="/update-appointment" element={<UpdateAppointmentPage />} />
             <Route path="/update-patient" element={<UpdatePatientPage />} />
             <Route path="/my-appointments" element={<MyAppointments />} />
+              <Route path="/home-page" element={<HomePage/>}/>
             {/* Add more routes as needed */}
             {/* Redirect to login if not authenticated */}
 

@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authService } from "../service/authservice.ts";
-
+import {useAuth} from "../context/auth-context.tsx";
 function LoginPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
-
+    const {login} = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -17,14 +16,14 @@ function LoginPage() {
 
         try {
             // Gọi authService để đăng nhập
-            const result = await authService.login({
+            const result = await login({
                 username: username.trim(),
                 password
             });
 
-            console.log("Login successful:", result.username);
+            console.log("Login successful:", result);
             // Chuyển hướng đến trang chính
-            navigate("/Home", { replace: true });
+            navigate("/home-page", { replace: true });
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Đăng nhập thất bại";
